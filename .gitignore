@@ -1,0 +1,34 @@
+# Python environments and generated files
+.venv*/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+# Local graph data, runs, caches and backups are not source code.
+instance/
+uploads/
+detector_databases/
+stim_files/
+*.pkl
+*.pickle
+*.sqlite3
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+node_modules/
+# Release archives are generated outside the source checkout.
+*.zip
+*.tar.gz
+
+# Portable tester build output.
+tester-download/

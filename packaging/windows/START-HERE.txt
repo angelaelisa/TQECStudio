@@ -1,0 +1,26 @@
+TQEC STUDIO - WINDOWS TESTER PREVIEW
+
+1. Right-click the downloaded ZIP and choose Extract All.
+2. Open the extracted TQEC Studio folder.
+3. Double-click TQEC Studio.exe.
+4. Studio opens in your usual browser. No Python installation is needed.
+
+Keep the small TQEC Studio window open while working.
+Use Open Studio if you accidentally close the browser tab.
+Save project in the browser to keep a portable copy of your graph.
+When finished, save your project and click Stop Studio.
+
+Keep the entire extracted folder together, including _internal.
+You cannot run the application directly inside the ZIP.
+
+Compilation, simulation and saved results stay on your own computer.
+The application runs locally at 127.0.0.1:5187.
+Installation is not required; browser drafts belong to the browser you use.
+
+This is an experimental, unsigned tester build, not an official TQEC release.
+If Windows blocks it, contact the person who supplied it for a verified build.
+
+If Studio fails to open, first close any other copy of Studio.
+The launcher log is in your local application data folder:
+%LOCALAPPDATA%\TQEC Studio\launcher.log
+Share error details with the project owner after checking for private data.

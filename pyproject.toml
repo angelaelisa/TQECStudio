@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tqec-studio"
+version = "0.1.0rc1"
+description = "A local visual block-graph editor, compiler and simulation workbench for TQEC"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md", "packaging/licenses/**/*.txt"]
+dependencies = [
+  "Flask==3.1.3",
+  "Werkzeug>=3.1.6,<3.2",
+  "defusedxml==0.7.1",
+  "tqec==0.1.0",
+  "stim==1.15.0",
+  "sinter==1.15.0",
+  "numpy==2.2.6",
+  "matplotlib==3.10.8",
+  "pymatching==2.3.1",
+  "pycollada==0.9.2",
+  "pyzx==0.9.0",
+  "tqecd==0.1.3",
+]
+
+[project.optional-dependencies]
+dev = ["ruff==0.16.9", "build==1.6.1", "pip-audit==2.10.1"]
+
+[project.scripts]
+tqec-studio = "studio.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["studio*"]
+
+[tool.setuptools.package-data]
+studio = ["templates/*.html", "static/*.js", "static/*.css", "static/*.svg"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

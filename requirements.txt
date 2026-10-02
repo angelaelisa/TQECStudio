@@ -1,0 +1,2 @@
+# Compatibility entry point. Runtime versions and hashes live in requirements.lock.
+-r requirements.lock
