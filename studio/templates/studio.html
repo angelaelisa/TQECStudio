@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="studio-token" content="{{ token }}">
+<title>TQEC Studio</title>
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='studio.css') }}">
+</head>
+<body>
+<header>
+<div class="brand">
+<span class="brandmark">◈</span> TQEC <b>Studio</b>
+<span class="preview">PREVIEW</span>
+</div>
+<input id="name" aria-label="Project name" value="Untitled graph" maxlength="120">
+<div class="file-actions">
+<button id="open">Open project</button>
+<button id="save" class="primary">Save project</button>
+<input type="file" id="file" accept=".json,.dae" hidden>
+</div>
+</header>
+<nav>
+<div class="steps">
+<button class="step active" data-panel="design">
+<span>01</span> Design</button>
+<button class="step" data-panel="surfaces">
+<span>02</span> Correlation surfaces</button>
+<button class="step" data-panel="compile">
+<span>03</span> Compile</button>
+<button class="step" data-panel="simulate">
+<span>04</span> Simulate &amp; plot</button>
+</div>
+<span class="engine">Local engine · TQEC {{ tqec_version }}</span>
+</nav>
+<main>
+<aside class="left">
+<div class="eyebrow">WORKSPACE</div>
+<h2>Build a computation</h2>
+<p class="muted">Drag coloured pipes onto the lattice. Matching pipe walls determine the cube at a junction.</p>
+<label>Start from an example<select id="example">
+<option value="memory">Z memory</option>
+<option value="cnot">Logical CNOT · Z basis</option>
+<option value="hadamard">Logical Hadamard · Z to X</option>
+<option value="empty">Empty graph</option>
+</select>
+</label>
+<button id="load-example">Load example</button>
+<div class="divider">
+</div>
+<div class="eyebrow">PIPE PALETTE</div>
+<label>Build with<select id="build-mode">
+<option value="pipe">Pipes · infer junction cubes</option>
+<option value="cube">Cubes · cap open ports</option>
+</select>
+</label>
+<label id="hadamard-control">
+<input type="checkbox" id="hadamard"> H · Hadamard pipes</label>
+<div id="palette">
+</div>
+<p class="hint">Enable H, then drag a yellow-banded pipe. The transition swaps X and Z walls. O is the pipe direction. X walls are red; Z walls are blue. Pipe labels describe x, y, z.</p>
+<div class="divider">
+</div>
+<p id="pipe-help" class="hint">Drop on a highlighted edge to attach a pipe. Open ends become ports. At a junction, Studio infers the cube or asks you to resolve an ambiguous boundary.</p>
+<div class="divider">
+</div>
+<div class="eyebrow">MEASUREMENT CAPS</div>
+<p class="hint">Fill every open port with one compatible cube in place. Existing cubes and pipes are kept.</p>
+<button id="cap-minimal-x">Cap all ports · X</button>
+<button id="cap-minimal-z">Cap all ports · Z</button>
+<p class="hint">X/Z applies at each port; input ports become preparations. Undo restores the open ports.</p>
+<div class="divider"></div>
+<button id="undo">↶ Undo</button> <button id="redo">↷ Redo</button>
+<details>
+<summary>Keyboard shortcuts</summary>
+<p class="hint">Select a pipe, then press X, Y or Z to extend in a positive direction; Shift + X, Y or Z for a negative direction. Valid ends and colours are offered when a choice is needed. The H checkbox applies to new pipes.</p>
+<p class="hint">Ctrl/Cmd + Z: undo · Ctrl/Cmd + Y or Shift + Ctrl/Cmd + Z: redo · Delete/Backspace: delete selected pipe or cube (with its connected pipes) · Escape: clear selection · F: fit view. Shortcuts pause while typing.</p>
+</details>
+<p id="autosave" class="hint">Drafts are saved in this browser.</p>
+</aside>
+<section class="canvas-section">
+<div class="canvas-toolbar">
+<div>
+<button id="iso" class="selected">3D overview</button>
+<button id="layer-view">Layer view</button>
+</div>
+<div>
+<button id="rotate" title="Rotate the camera, not the graph">Rotate view</button>
+<button id="fit">Fit</button>
+</div>
+</div>
+<div class="canvas-title">
+<span id="graph-title">Z memory</span>
+<small id="counts">
+</small>
+</div>
+<svg id="canvas" viewBox="0 0 800 660" role="img" aria-label="Interactive graph. Select cubes with a click, or use the cube list in the inspector.">
+</svg>
+<div class="canvas-bottom">
+<div class="legend">
+<i class="x">
+</i> X face <i class="z">
+</i> Z face <i class="s">
+</i> Surface support</div>
+<label>Time layer <input id="layer" type="number" min="-100" max="100" value="0">
+</label>
+</div>
+<div id="message" role="status" aria-live="polite">Ready. Select a cube to inspect or extend it.</div>
+</section>
+<section id="plot-workspace" class="plot-workspace" hidden>
+<div class="eyebrow">SIMULATION RESULTS</div>
+<h2>Logical error rates</h2>
+<p id="plot-empty" class="muted">Choose your sweep and run a simulation. Results will appear here, one plot per observable.</p>
+<p id="plot-provenance" class="hint">
+</p>
+<div id="plot-cards">
+</div>
+</section>
+<aside class="right">
+<section id="panel-design">
+<div class="eyebrow">INSPECTOR</div>
+<h2>Selected cube</h2>
+<select id="cube-list" aria-label="Select cube">
+<option value="">No selection</option>
+</select>
+<div id="selection" class="muted">Select a cube in the canvas.</div>
+<div id="edit-controls" hidden>
+<button id="delete" class="danger">Delete cube and its pipes</button>
+</div>
+<div class="divider">
+</div>
+<h3>Pipes</h3>
+<div id="pipe-list">
+</div>
+<p class="hint">Drag a pipe onto a highlighted edge. Add H / Remove H edits an existing pipe when its cube walls allow the change. Use Cubes mode to cap open ports.</p>
+</section>
+<section id="panel-surfaces" hidden>
+<div class="eyebrow">LOGICAL OBSERVABLES</div>
+<h2>Correlation surfaces</h2>
+<p class="muted">Find surfaces using TQEC, then choose which observables to include in your circuit.</p>
+<button id="find" class="primary">Validate and find surfaces</button>
+<p id="surface-info" class="hint">Run discovery after each graph edit.</p>
+<div id="surface-list">
+</div>
+<p class="hint">The canvas shows the selected surface’s Pauli support on the graph, not a filled geometric sheet. Red means X; blue means Z. An outlined ring represents support on a single cube.</p>
+<button id="clear-surface">Hide overlay</button>
+</section>
+<section id="panel-compile" hidden>
+<div class="eyebrow">LOCAL COMPILATION</div>
+<h2>Generate a Stim circuit</h2>
+<p class="muted">Compile the current graph and your selected observables on this computer.</p>
+<label>Scale factor k<input id="distance" type="number" min="1" step="1" value="1">
+</label>
+<p id="distance-hint" class="hint">Nominal code distance: 3. Larger scales require more time and memory.</p>
+<label>Convention<select id="convention">
+<option value="fixed_bulk">Fixed bulk</option>
+<option value="fixed_boundary">Fixed boundary</option>
+</select>
+</label>
+<label>Observables<select id="observable-mode">
+<option value="selected">Selected correlation surfaces</option>
+<option value="auto">Automatic · all surfaces</option>
+<option value="none">None</option>
+</select>
+</label>
+<details class="compile-options">
+<summary>Temporal height</summary>
+<p class="hint">Stabilizer rounds per block = a × k + b, excluding initialization and final measurement. Default: 2k − 1.</p>
+<div class="coords">
+<label>a · slope<input id="height-slope" type="number" value="2" step="any">
+</label>
+<label>b · offset<input id="height-offset" type="number" value="-1" step="any">
+</label>
+</div>
+<p id="height-preview" class="hint">
+</p>
+</details>
+<details class="compile-options" open>
+<summary>Noise model</summary>
+<label>Model<select id="noise-model">
+<option value="uniform_depolarizing">Uniform depolarizing</option>
+<option value="none">No added noise</option>
+<option value="si1000">SI1000</option>
+<option value="custom">Custom rules</option>
+</select>
+</label>
+<label id="noise-p-control">Probability p<input id="noise" type="number" value="0.001" min="0" max="1" step="any">
+</label>
+<p id="noise-help" class="hint">
+</p>
+<div id="custom-noise" hidden>
+<label>Idle depolarization<input id="noise-idle" type="number" min="0" max="1" step="any" value="0.001">
+</label>
+<label>Extra depolarization while waiting for measurements / resets<input id="noise-wait" type="number" min="0" max="1" step="any" value="0">
+</label>
+<p class="hint">Each rule may apply several channels after an operation. Zero channels and zero result flip explicitly mean noiseless. Every circuit operation needs a matching rule. Gate rules take precedence over general rules.</p>
+<div id="noise-rules">
+</div>
+<button id="add-noise-rule" type="button">+ Add noise rule</button>
+<button id="reset-noise-rules" type="button">Start from uniform rules</button>
+</div>
+</details>
+<details class="compile-options">
+<summary>Detectors and database</summary>
+<label>Manhattan radius<input id="detector-radius" type="number" value="2" step="1">
+</label>
+<p class="hint">Values ≤ 0 disable detector computation in this engine. Default: 2.</p>
+<label>Detector database<select id="detector-cache">
+<option value="disabled">Disabled · compute each run</option>
+<option value="reuse">Reuse and update database</option>
+<option value="only">Database only · fail on missing entries</option>
+</select>
+</label>
+<div id="database-controls" hidden>
+<label>Database name<input id="database-name" value="default" maxlength="64" pattern="[A-Za-z0-9_-]+">
+</label>
+<p class="hint">Named JSON databases are stored locally in instance/studio/databases. Reuse a name to share cached detectors between runs. Import a TQEC JSON database below; each completed cached run offers a database download.</p>
+<label>Import detector database (.json)<input id="database-file" type="file" accept=".json,application/json">
+</label>
+<button id="import-database" type="button">Import into named database</button>
+<p id="database-status" class="hint" role="status">
+</p>
+</div>
+</details>
+<details class="compile-options">
+<summary>Python API coverage</summary>
+<p class="hint">These controls cover the installed compile_block_graph and generate_stim_circuit parameters: convention, observables, block_temporal_height, k, noise_model, manhattan_radius, detector_database, database_path, do_not_use_database and only_use_database. Database paths are managed through local names and JSON import/export. Custom convention builders and arbitrary NoiseModel subclasses still require Python. Simulation and decoding are separate workflows.</p>
+<p class="hint">The custom noise editor exposes all six NoiseModel constructor fields and NoiseRule channels / result flips. Vector-valued Pauli channels are not supported by this installed NoiseRule implementation. Compiler limitations still apply to each graph and convention.</p>
+<a href="https://tqec.github.io/tqec/_autosummary/tqec.compile.compile_block_graph.html" target="_blank" rel="noopener">TQEC compilation documentation ↗</a>
+</details>
+<button id="compile" class="primary">Compile circuit</button>
+<div id="job" aria-live="polite">
+</div>
+<div id="results" hidden>
+<h3>Generated circuit</h3>
+<p id="stats">
+</p>
+<a id="download" class="button primary">Download .stim</a>
+<a id="database-download" class="button" hidden>Download detector database</a>
+<a id="manifest" class="button">Download run record</a>
+<a id="physical-layers" class="button" target="_blank" rel="noopener">Physical qubit layers ↗</a>
+<a id="diagram" class="button" target="_blank" rel="noopener">View circuit diagram ↗</a>
+<p class="hint">The run record includes the source graph, settings and engine versions. Graph edits mark these results as out of date.</p>
+</div>
+</section>
+<section id="panel-simulate" hidden>
+<div class="eyebrow">LOCAL SIMULATION</div>
+<h2>Simulate &amp; plot</h2>
+<p class="muted">Sample and decode the current graph across scales and noise strengths. Uses the convention, temporal height, observables, noise model and detector settings from Compile.</p>
+<button id="simulation-settings">Review Compile settings</button>
+<label>Scale factors k · comma separated<input id="sweep-ks" value="1, 2, 3">
+</label>
+<label>Noise strengths p · comma separated<input id="sweep-ps" value="0.001, 0.003, 0.01">
+</label>
+<label id="sim-reference-control" hidden>Custom noise reference p<input id="sim-reference" type="number" value="0.001" min="0.000000000001" max="1" step="any">
+</label>
+<p class="hint">For custom noise, every rule is multiplied by p / the custom noise reference p above. All resulting probabilities must remain ≤ 1.</p>
+<div class="coords">
+<label>Max shots per point<input id="sim-shots" type="number" min="1" step="1" value="10000">
+</label>
+<label>Max errors per point<input id="sim-errors" type="number" min="1" step="1" value="100">
+</label>
+</div>
+<p class="hint">Stops at either limit. Errors count a failure of any selected observable; batching may exceed the error limit.</p>
+<label>Workers<input id="sim-workers" type="number" min="1" step="1" value="1">
+</label>
+<label>Decoder<select id="sim-decoder">
+<option value="pymatching">PyMatching</option>
+</select>
+</label>
+<details class="compile-options">
+<summary>Plot options</summary>
+<label>
+<input id="sim-inset" type="checkbox" checked> Show correlation-surface inset</label>
+<label>
+<input id="sim-zoom" type="checkbox"> Show zoom inset</label>
+<div id="sim-zoom-controls" hidden>
+<div class="coords">
+<label>p minimum<input id="zoom-xmin" type="number" step="any" value="0.001">
+</label>
+<label>p maximum<input id="zoom-xmax" type="number" step="any" value="0.01">
+</label>
+</div>
+<div class="coords">
+<label>Rate minimum<input id="zoom-ymin" type="number" step="any" value="0.01">
+</label>
+<label>Rate maximum<input id="zoom-ymax" type="number" step="any" value="0.3">
+</label>
+</div>
+<p class="hint">Zooms the sampled curves; does not run a threshold search.</p>
+</div>
+</details>
+<p id="sweep-summary" class="hint">
+</p>
+<button id="simulate" class="primary">Run simulation</button>
+<p id="simulation-status" role="status" aria-live="polite">
+</p>
+<div id="simulation-downloads" hidden>
+<a id="simulation-csv" class="button">Download samples CSV</a>
+<a id="simulation-record" class="button">Download simulation record</a>
+</div>
+<p class="hint">Rates are per shot. Shaded likelihood bounds use a factor of 1000; they are not labelled as a confidence interval. A triangle marks an upper bound when no errors were seen. Crossings alone do not establish a threshold. Sampling is stochastic. Keep Studio running until completion.</p>
+<a href="https://tqec.github.io/tqec/user_guide/reading_error_plots.html" target="_blank" rel="noopener">How to read TQEC plots ↗</a>
+</section>
+</aside>
+</main>
+<footer>
+<span>Offline workspace · no account required</span>
+<span>Preview: 150 cubes maximum · Save project to keep a portable copy</span>
+</footer>
+<dialog id="direction-dialog" aria-labelledby="direction-title">
+<h2 id="direction-title">Choose a pipe</h2>
+<p>Choose a valid pipe colour and starting endpoint. Coordinates use the graph’s X, Y and Z axes.</p>
+<div id="direction-options" class="dialog-actions"></div>
+<button id="cancel-direction">Cancel</button>
+</dialog>
+<dialog id="junction-dialog">
+<h2>Choose the junction boundary</h2>
+<p>The pipe walls leave a face basis undetermined. Choose a compatible cube; Studio will not guess.</p>
+<div id="junction-choices">
+</div>
+<div class="dialog-actions">
+<button id="cancel-junction">Cancel placement</button>
+<button id="confirm-junction" class="primary">Create pipe and junction</button>
+</div>
+</dialog>
+<script src="{{ url_for('static', filename='compilation.js') }}">
+</script>
+<script src="{{ url_for('static', filename='studio.js') }}">
+</script>
+<script src="{{ url_for('static', filename='simulation.js') }}">
+</script>
+</body>
+</html>

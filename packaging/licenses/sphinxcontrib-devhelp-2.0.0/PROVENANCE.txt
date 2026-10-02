@@ -1,0 +1,4 @@
+Package: sphinxcontrib-devhelp 2.0.0
+Source distribution: https://files.pythonhosted.org/packages/f6/d2/5beee64d3e4e747f316bae86b55943f51e82bb86ecd325883ef65741e7da/sphinxcontrib_devhelp-2.0.0.tar.gz
+SHA-256: 411f5d96d445d1d73bb5d52133377b4248ec79db5c793ce7dbe59e074b4dd1ad
+Files: sphinxcontrib_devhelp-2.0.0/LICENCE.rst

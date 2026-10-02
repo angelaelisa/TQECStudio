@@ -1,0 +1,2 @@
+Sinter 1.15.0 is distributed from the Stim repository.
+Upstream license: https://raw.githubusercontent.com/quantumlib/Stim/v1.15.0/LICENSE
