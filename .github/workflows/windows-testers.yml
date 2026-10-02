@@ -7,9 +7,10 @@ jobs:
   windows:
     runs-on: windows-latest
     timeout-minutes: 45
-    env:
-      MPLCONFIGDIR: ${{ runner.temp }}/tqec-matplotlib
     steps:
+      - name: Set local plotting cache
+        shell: pwsh
+        run: '"MPLCONFIGDIR=$env:RUNNER_TEMP/tqec-matplotlib" | Out-File -FilePath $env:GITHUB_ENV -Append'
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
