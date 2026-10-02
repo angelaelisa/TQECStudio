@@ -16,9 +16,9 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 25
-    env:
-      MPLCONFIGDIR: ${{ runner.temp }}/tqec-matplotlib
     steps:
+      - name: Set local plotting cache
+        run: echo "MPLCONFIGDIR=$RUNNER_TEMP/tqec-matplotlib" >> "$GITHUB_ENV"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
