@@ -56,6 +56,10 @@ TQEC 0.1.0 and the scientific stack are pinned intentionally. Do not upgrade the
 
 Long-running compilation/sampling is not yet cancellable in the interface. Keep the page open to retain its job status; exported results remain on disk. Custom Python convention builders/decoders are not loaded from uploads. Curves and nominal distance labels do not certify a threshold, fault tolerance or actual circuit distance.
 
+## AI-assisted development
+
+TQEC Studio was created by Ángela Elisa Álvarez with substantial assistance from OpenAI's Codex. AI assisted with interface design, implementation, debugging, tests, and documentation, guided by the author's requirements and iterative feedback. Project direction, decisions, and responsibility for reviewing and validating releases remain with the human maintainer.
+
 ## Upstream and licensing
 
 Studio uses [TQEC](https://github.com/tqec/tqec), [Stim/Sinter](https://github.com/quantumlib/Stim), PyMatching, Flask and Matplotlib; those projects retain their own licences. Copyright 2026 Ángela Elisa Álvarez. Original Studio code and documentation are licensed under [Apache-2.0](LICENSE). Dependencies retain their own licences and attributions; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
