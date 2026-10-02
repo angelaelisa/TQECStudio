@@ -107,6 +107,7 @@
 </label>
 </div>
 <div id="message" role="status" aria-live="polite">Ready. Select a cube to inspect or extend it.</div>
+<button id="repair-cubes" hidden>Review cube replacements</button>
 </section>
 <section id="plot-workspace" class="plot-workspace" hidden>
 <div class="eyebrow">SIMULATION RESULTS</div>
@@ -140,6 +141,7 @@
 <h2>Correlation surfaces</h2>
 <p class="muted">Find surfaces using TQEC, then choose which observables to include in your circuit.</p>
 <button id="find" class="primary">Validate and find surfaces</button>
+<button id="check-cubes">Check cube kinds</button>
 <p id="surface-info" class="hint">Run discovery after each graph edit.</p>
 <div id="surface-list">
 </div>
@@ -309,6 +311,15 @@
 <span>Offline workspace · no account required</span>
 <span>Preview: 150 cubes maximum · Save project to keep a portable copy</span>
 </footer>
+<dialog id="cube-repair-dialog" aria-labelledby="cube-repair-title">
+<h2 id="cube-repair-title">Correct junction cubes</h2>
+<p>TQEC recommends these cube kinds for the connected pipes. Pipes and positions stay the same. Changing a cube kind can change its ZX vertex type, so correlation surfaces must be found again.</p>
+<ul id="cube-repair-changes"></ul>
+<div class="dialog-actions">
+<button id="cancel-cube-repair">Cancel</button>
+<button id="apply-cube-repair" class="primary">Apply cube replacements</button>
+</div>
+</dialog>
 <dialog id="direction-dialog" aria-labelledby="direction-title">
 <h2 id="direction-title">Choose a pipe</h2>
 <p>Choose a valid pipe colour and starting endpoint. Coordinates use the graph’s X, Y and Z axes.</p>
@@ -321,7 +332,7 @@
 <div id="junction-choices">
 </div>
 <div class="dialog-actions">
-<button id="cancel-junction">Cancel placement</button>
+<button id="cancel-junction">Cancel edit</button>
 <button id="confirm-junction" class="primary">Create pipe and junction</button>
 </div>
 </dialog>
