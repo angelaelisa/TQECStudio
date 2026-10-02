@@ -37,13 +37,15 @@ let drag = null,
   projectPoint = null,
   buildMode = 'pipe',
   pendingPipe = null;
+let pendingCubeRepair = null;
 const key = p => p.join(',');
 const pipeKey = p => [key(p.u), key(p.v)].sort().join('|');
 const clone = x => JSON.parse(JSON.stringify(x));
 
-function message(text, error = false) {
+function message(text, error = false, repairable = false) {
   $('message').textContent = text;
   $('message').classList.toggle('error', error);
+  $('repair-cubes').hidden = !repairable;
 }
 async function api(path, data, form = false) {
   const opts = data === undefined ? {} : {
@@ -56,7 +58,7 @@ async function api(path, data, form = false) {
   if (data !== undefined && !form) opts.headers['Content-Type'] = 'application/json';
   const res = await fetch(path, opts);
   const result = await res.json();
-  if (!res.ok) throw Error(result.error || 'The request failed.');
+  if (!res.ok) throw Object.assign(Error(result.error || 'The request failed.'), {repairable: result.repairable});
   return result;
 }
 
@@ -74,6 +76,9 @@ function saveDraft() {
 
 function invalidate() {
   generation++;
+  pendingCubeRepair = null;
+  $('repair-cubes').hidden = true;
+  $('cube-repair-dialog').close();
   if (window.markSimulationStale) window.markSimulationStale();
   surfaces = [];
   revision = null;
@@ -108,7 +113,7 @@ async function change(next, validateEdit = true) {
     message('Graph updated. Find surfaces to check the complete computation.');
     return true;
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
     return false;
   } finally {
     busy = false;
@@ -373,7 +378,7 @@ async function setHadamard(pipe, enabled) {
     commit(result.graph);
     message(enabled ? 'Hadamard added. The yellow band swaps X and Z walls.' : 'Hadamard removed.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
   }
@@ -401,16 +406,25 @@ function selectPipe(pipe) {
   scrollToSelectedPipe();
   message('Pipe selected. Press X, Y or Z to extend; hold Shift for the negative direction.');
 }
-async function deletePipe(id) {
+async function deletePipe(id, choices = {}) {
   if (busy || !id) return;
   const pipe = graph.pipes.find(p => pipeKey(p) === id);
   if (!pipe) return;
-  const next = clone(graph);
-  next.pipes = next.pipes.filter(p => pipeKey(p) !== id);
-  // Remove only dangling ports made empty by this deletion, retaining real cubes.
-  const endpoints = new Set([key(pipe.u), key(pipe.v)]);
-  next.cubes = next.cubes.filter(c => !(['P', 'PORT'].includes(c.kind) && endpoints.has(key(c.position)) && !next.pipes.some(p => key(p.u) === key(c.position) || key(p.v) === key(c.position))));
-  if (await change(next, false)) message('Pipe deleted. Undo restores it.');
+  busy = true;
+  try {
+    const result = await api('/api/delete-pipe', {graph: clone(graph), u: pipe.u, v: pipe.v, choices});
+    if (result.ambiguities) {
+      showJunctionChoices(result.ambiguities, {action: 'delete', id, choices, generation});
+      return;
+    }
+    pendingPipe = null;
+    commit(result.graph);
+    message('Pipe deleted. Endpoint cubes rechecked.' + (result.inferred.length ? ' Updated: ' + result.inferred.map(c => c.previous + ' → ' + c.kind + ' at (' + c.position + ')').join('; ') + '.' : '') + ' Undo restores the pipe and cubes together.');
+  } catch (e) {
+    message(e.message, true, e.repairable);
+  } finally {
+    busy = false;
+  }
 }
 
 function setupPipeSelection() {
@@ -444,7 +458,7 @@ async function replaceSelectedCube(kind) {
     commit(result.graph);
     message(kind === 'P' ? 'Cube reopened as a port. Its pipe is preserved.' : 'Cube replaced. All connected pipes are preserved.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
   }
@@ -1135,6 +1149,23 @@ document.addEventListener('pointercancel', () => {
 function pipeKind() {
   return kind + ($('hadamard').checked ? 'H' : '');
 }
+function showJunctionChoices(ambiguities, pending) {
+  pendingPipe = pending;
+  $('junction-choices').replaceChildren();
+  for (const ambiguity of ambiguities) {
+    const label = document.createElement('label');
+    label.textContent = 'Cube at (' + ambiguity.position.join(', ') + ')';
+    const select = document.createElement('select');
+    select.dataset.position = key(ambiguity.position);
+    select.add(new Option('Choose a cube kind…', ''));
+    for (const k of ambiguity.kinds) select.add(new Option(k, k));
+    label.append(select);
+    $('junction-choices').append(label);
+  }
+  $('confirm-junction').textContent = pending.action === 'place' ? 'Create pipe and update cubes' : 'Apply deletion and update cubes';
+  $('junction-dialog').showModal();
+  message('Pipe colours allow several cubes. Choose the junction boundary to finish.');
+}
 async function placePipe(option, selectedKind, choices = {}) {
   if (busy) return;
   busy = true;
@@ -1148,25 +1179,7 @@ async function placePipe(option, selectedKind, choices = {}) {
     };
     const result = await api('/api/place-pipe', payload);
     if (result.ambiguities) {
-      pendingPipe = {
-        option,
-        kind: selectedKind,
-        generation,
-        choices
-      };
-      $('junction-choices').replaceChildren();
-      for (const ambiguity of result.ambiguities) {
-        const label = document.createElement('label');
-        label.textContent = 'Cube at (' + ambiguity.position.join(', ') + ')';
-        const select = document.createElement('select');
-        select.dataset.position = key(ambiguity.position);
-        select.add(new Option('Choose a cube kind…', ''));
-        for (const k of ambiguity.kinds) select.add(new Option(k, k));
-        label.append(select);
-        $('junction-choices').append(label);
-      }
-      $('junction-dialog').showModal();
-      message('Pipe colours allow several cubes. Choose the junction boundary to finish.');
+      showJunctionChoices(result.ambiguities, {action: 'place', option, kind: selectedKind, generation, choices});
       return;
     }
     pendingPipe = null;
@@ -1174,9 +1187,9 @@ async function placePipe(option, selectedKind, choices = {}) {
     selected = null;
     commit(result.graph);
     scrollToSelectedPipe();
-    message(result.inferred.length ? 'Pipe placed. Junction cube ' + (Object.keys(choices).length ? 'chosen' : 'inferred') + ': ' + result.inferred.map(c => c.kind + ' at (' + c.position + ')').join('; ') : 'Pipe placed. Dangling ends remain open ports.');
+    message(result.inferred.length ? 'Pipe placed. Junctions checked: ' + result.inferred.map(c => (['P', 'PORT'].includes(c.previous) ? c.kind : c.previous + ' → ' + c.kind) + ' at (' + c.position + ')').join('; ') + '. Undo restores the pipe and cubes together.' : 'Pipe placed. Junction cubes checked. Dangling ends remain open ports.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
   }
@@ -1199,7 +1212,7 @@ $('build-mode').onchange = () => {
 $('cancel-junction').onclick = () => {
   pendingPipe = null;
   $('junction-dialog').close();
-  message('Pipe placement cancelled.');
+  message('Pipe edit cancelled.');
 };
 $('junction-dialog').addEventListener('cancel', () => {
   pendingPipe = null;
@@ -1220,10 +1233,12 @@ $('confirm-junction').onclick = () => {
   $('junction-dialog').close();
   if (pending.generation !== generation) {
     pendingPipe = null;
-    message('Graph changed. Place the pipe again.', true);
+    message('Graph changed. Repeat the pipe edit.', true);
     return;
   }
-  placePipe(pending.option, pending.kind, choices);
+  if (pending.action === 'delete-cube') deleteCube(pending.coord, choices);
+  else if (pending.action === 'delete') deletePipe(pending.id, choices);
+  else placePipe(pending.option, pending.kind, choices);
 };
 
 function panel(name) {
@@ -1244,13 +1259,25 @@ $('cube-list').onchange = () => {
     render();
   }
 };
-$('delete').onclick = () => {
-  if (!selected) return;
-  const next = clone(graph);
-  next.cubes = next.cubes.filter(c => key(c.position) !== selected);
-  next.pipes = next.pipes.filter(p => key(p.u) !== selected && key(p.v) !== selected);
-  change(next);
-};
+async function deleteCube(coord, choices = {}) {
+  if (busy || !coord) return;
+  busy = true;
+  try {
+    const result = await api('/api/delete-cube', {graph: clone(graph), position: coord, choices});
+    if (result.ambiguities) {
+      showJunctionChoices(result.ambiguities, {action: 'delete-cube', coord, choices, generation});
+      return;
+    }
+    pendingPipe = null;
+    commit(result.graph);
+    message('Cube and its pipes deleted. Neighbouring cubes rechecked.' + (result.inferred.length ? ' Updated: ' + result.inferred.map(c => c.previous + ' → ' + c.kind + ' at (' + c.position + ')').join('; ') + '.' : '') + ' Undo restores the whole edit.');
+  } catch (e) {
+    message(e.message, true, e.repairable);
+  } finally {
+    busy = false;
+  }
+}
+$('delete').onclick = () => { if (selected) deleteCube(selected.split(',').map(Number)); };
 async function fillPort(label, cubeKind) {
   if (busy) return;
   busy = true;
@@ -1263,7 +1290,7 @@ async function fillPort(label, cubeKind) {
     commit(res.graph);
     message('Port capped with ' + cubeKind + '. Undo restores the open port.' + (cubeKind === 'Y' ? ' Y caps support validation and surfaces; the installed compiler cannot compile them yet.' : ''));
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
   }
@@ -1500,7 +1527,7 @@ $('load-example').onclick = async () => {
     commit(res.graph);
     message('Example loaded. Undo returns to your previous graph.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
   }
@@ -1516,7 +1543,7 @@ $('file').onchange = async () => {
     commit((await api('/api/import', form, true)).graph);
     message('Project imported. Undo returns to your previous graph.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
     $('file').value = '';
@@ -1573,12 +1600,62 @@ $('find').onclick = async () => {
     message('Graph validated. Choose observables, then open Compile.');
     draw();
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     busy = false;
     $('find').disabled = false;
   }
 };
+
+// Cube repair controls: preview first, then commit as one undoable edit.
+async function reviewCubeRepairs() {
+  if (busy) return;
+  busy = true;
+  const gen = generation;
+  pendingCubeRepair = null;
+  try {
+    const snapshot = clone(graph);
+    const normalized = await api('/api/graph', snapshot);
+    const result = await api('/api/repair-cubes', {graph: snapshot, revision: normalized.revision});
+    if (gen !== generation) return;
+    if (!result.changes.length) {
+      message('Cube kinds already match the connected pipes. No replacements are needed.');
+      return;
+    }
+    $('cube-repair-changes').replaceChildren();
+    for (const change of result.changes) {
+      const row = document.createElement('li');
+      row.textContent = `(${change.position.join(', ')}) · ${change.before} → ${change.after}`;
+      $('cube-repair-changes').append(row);
+    }
+    pendingCubeRepair = {graph: result.graph, generation: gen};
+    $('cube-repair-dialog').showModal();
+  } catch (e) {
+    message(e.message, true, e.repairable);
+  } finally {
+    busy = false;
+  }
+}
+$('repair-cubes').onclick = reviewCubeRepairs;
+$('check-cubes').onclick = reviewCubeRepairs;
+$('cancel-cube-repair').onclick = () => {
+  pendingCubeRepair = null;
+  $('cube-repair-dialog').close();
+};
+$('cube-repair-dialog').addEventListener('cancel', () => { pendingCubeRepair = null; });
+$('apply-cube-repair').onclick = () => {
+  if (busy || !pendingCubeRepair) return;
+  const pending = pendingCubeRepair;
+  pendingCubeRepair = null;
+  $('cube-repair-dialog').close();
+  if (pending.generation !== generation) {
+    message('Graph changed. Check cube kinds again.', true);
+    return;
+  }
+  commit(pending.graph);
+  message('Cube kinds corrected. Undo restores the previous cubes. Find surfaces again before compiling.');
+};
+// End cube repair controls.
 
 function setupSurfaceDownloads() {
   const box = document.createElement('section');
@@ -1643,7 +1720,7 @@ async function downloadSurfaceViewer(axis) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     message('HTML viewer downloaded for Observable ' + (index + 1) + ' with +' + axis + ' face opened.');
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   } finally {
     updateSurfaceDownloads();
   }
@@ -1714,14 +1791,14 @@ $('compile').onclick = async () => {
         activeJob = null;
         $('compile').disabled = false;
         $('job').textContent = e.message;
-        message(e.message, true);
+        message(e.message, true, e.repairable);
       }
     };
     poll();
   } catch (e) {
     $('compile').disabled = false;
     $('job').textContent = e.message;
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   }
 };
 async function start() {
@@ -1732,14 +1809,14 @@ async function start() {
       try {
         const restored = await api('/api/graph', JSON.parse(draft).graph);
         graph = restored.graph;
-        message(restored.warning || 'Restored your browser draft.', Boolean(restored.warning));
+        message(restored.warning || 'Restored your browser draft.', Boolean(restored.warning), restored.repairable);
       } catch (e) {
         message('Draft could not be restored: ' + e.message, true);
       }
     } else graph = (await api('/api/example/memory')).graph;
     render();
   } catch (e) {
-    message(e.message, true);
+    message(e.message, true, e.repairable);
   }
 }
 start();

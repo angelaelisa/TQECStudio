@@ -23,10 +23,14 @@ from werkzeug.exceptions import HTTPException
 from .compilation import compilation_settings, noise_model
 from .graph import (
     KINDS,
+    CubeKindsError,
     cap_port,
     cap_ports_minimally,
     check_junction_directions,
     checked_surfaces,
+    corrected_cube_kinds,
+    delete_cube_proposal,
+    delete_pipe_proposal,
     graph_from_data,
     graph_hash,
     pipe_options,
@@ -62,6 +66,8 @@ def create_studio_app(data_dir=None):
         if isinstance(exc, HTTPException):
             return jsonify(error=exc.description), exc.code
         app.logger.debug("Studio request failed", exc_info=True)
+        if isinstance(exc, CubeKindsError):
+            return jsonify(error=str(exc), repairable=True), 400
         if isinstance(exc, (ValueError, TQECError, NotImplementedError)):
             return jsonify(error=str(exc)), 400
         if isinstance(exc, (KeyError, TypeError, AttributeError)):
@@ -98,11 +104,17 @@ def create_studio_app(data_dir=None):
         if payload.get("validate_edit"):
             check_junction_directions(g)
         warning = None
+        repairable = False
         try:
             check_junction_directions(g)
-        except ValueError as exc:
+            validate_graph(g)
+        except CubeKindsError as exc:
+            warning, repairable = str(exc), True
+        except (ValueError, TQECError) as exc:
             warning = str(exc)
-        return jsonify(graph=g.to_dict(), revision=graph_hash(g), warning=warning)
+        return jsonify(
+            graph=g.to_dict(), revision=graph_hash(g), warning=warning, repairable=repairable
+        )
 
     @app.post("/api/pipe-hadamard")
     def set_pipe_hadamard():
@@ -128,6 +140,16 @@ def create_studio_app(data_dir=None):
                 "or use the Logical Hadamard example."
             ) from exc
         return jsonify(graph=result.to_dict())
+
+    @app.post("/api/repair-cubes")
+    def repair_cubes():
+        data = request.get_json()
+        graph = graph_from_data(data["graph"])
+        if data.get("revision") != graph_hash(graph):
+            raise ValueError("The graph changed. Check cube kinds again.")
+        fixed, changes = corrected_cube_kinds(graph)
+        validate_graph(fixed)
+        return jsonify(graph=fixed.to_dict(), changes=changes)
 
     @app.post("/api/import")
     def import_graph():
@@ -169,6 +191,26 @@ def create_studio_app(data_dir=None):
             data.get("v"),
             data.get("kind"),
             data.get("choices"),
+        )
+        if ambiguities:
+            return jsonify(ambiguities=ambiguities)
+        return jsonify(graph=result.to_dict(), inferred=inferred)
+
+    @app.post("/api/delete-pipe")
+    def delete_pipe():
+        data = request.get_json()
+        result, ambiguities, inferred = delete_pipe_proposal(
+            graph_from_data(data["graph"]), data.get("u"), data.get("v"), data.get("choices")
+        )
+        if ambiguities:
+            return jsonify(ambiguities=ambiguities)
+        return jsonify(graph=result.to_dict(), inferred=inferred)
+
+    @app.post("/api/delete-cube")
+    def delete_cube():
+        data = request.get_json()
+        result, ambiguities, inferred = delete_cube_proposal(
+            graph_from_data(data["graph"]), data.get("position"), data.get("choices")
         )
         if ambiguities:
             return jsonify(ambiguities=ambiguities)

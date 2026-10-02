@@ -6,10 +6,30 @@ from hashlib import sha256
 from tqec import Basis, BlockGraph
 from tqec.computation.cube import ZXCube, cube_kind_from_string
 from tqec.computation.pipe import PipeKind
+from tqec.utils.exceptions import TQECError
 from tqec.utils.position import Direction3D, Position3D
 
 KINDS = ("ZXZ", "ZXX", "XZX", "XZZ", "XXZ", "ZZX", "Y", "P")
 PIPE_KINDS = ("OXZ", "OZX", "XOZ", "ZOX", "XZO", "ZXO")
+
+
+class CubeKindsError(ValueError):
+    """A graph needs explicit cube corrections before surface discovery."""
+
+
+def corrected_cube_kinds(graph):
+    """Use the same hidden-face normalization as the TQEC compiler."""
+    fixed = graph.fix_shadowed_faces()
+    changes = [
+        dict(
+            position=list(c.position.as_tuple()),
+            before=str(c.kind),
+            after=str(fixed[c.position].kind),
+        )
+        for c in sorted(graph.cubes, key=lambda c: c.position)
+        if c.kind != fixed[c.position].kind
+    ]
+    return fixed, changes
 
 
 def check_junction_directions(graph):
@@ -37,6 +57,14 @@ def validate_graph(graph):
         # Translate a 3D corner into an actionable coordinate-based message.
         check_junction_directions(graph)
         raise
+    _, changes = corrected_cube_kinds(graph)
+    if changes:
+        details = "; ".join(
+            f"{c['before']} → {c['after']} at {tuple(c['position'])}" for c in changes
+        )
+        raise CubeKindsError(
+            "Connected pipes require updated cube kinds: " + details + ". Review cube replacements."
+        )
 
 
 def cap_port(graph, label, kind):
@@ -101,6 +129,93 @@ def replace_cube(graph, coord, kind):
     return result
 
 
+def matching_cube_kinds(endpoint, incident):
+    """Check all walls at this endpoint, including the tail of H pipes."""
+    fits = []
+    coord = endpoint.as_tuple()
+    for candidate in KINDS[:-2]:
+        star = BlockGraph("junction check")
+        star.add_cube(endpoint, candidate)
+        try:
+            for i, pipe in enumerate(incident):
+                other = tuple(pipe["v"]) if tuple(pipe["u"]) == coord else tuple(pipe["u"])
+                star.add_cube(Position3D(*other), "P", f"end{i}")
+                star.add_pipe(Position3D(*pipe["u"]), Position3D(*pipe["v"]), pipe["kind"])
+            validate_graph(star)
+            fits.append(candidate)
+        except ValueError:
+            continue
+        except TQECError:
+            continue
+    return fits
+
+
+def infer_junction(cube, incident, choices, ambiguities, inferred):
+    """Preserve a valid kind; replace a forced kind or request a boundary choice."""
+    coord = tuple(cube["position"])
+    fits = matching_cube_kinds(Position3D(*coord), incident)
+    if not fits:
+        raise ValueError(f"Pipe colours conflict at {coord}; no compatible cube exists.")
+    chosen = choices.get(",".join(map(str, coord)))
+    if chosen is not None and chosen not in fits:
+        raise ValueError(f"The selected cube at {coord} does not match the pipe colours.")
+    if chosen is None and cube["kind"] in fits:
+        chosen = cube["kind"]
+    if len(fits) == 1:
+        chosen = fits[0]
+    if chosen is None:
+        ambiguities.append(dict(position=list(coord), kinds=fits))
+        chosen = fits[0]  # Validate a completion without committing an ambiguous choice.
+    previous = cube["kind"]
+    cube.update(kind=chosen, label="" if previous in ("P", "PORT") else cube["label"])
+    if chosen != previous:
+        inferred.append(dict(position=list(coord), kind=chosen, previous=previous))
+
+
+def delete_pipe_proposal(graph, u, v, choices=None):
+    """Remove a pipe and recheck its surviving endpoints as one atomic edit."""
+    u, v = position(u), position(v)
+    if not graph.has_pipe_between(u, v):
+        raise ValueError("Select an existing pipe.")
+    endpoints = {u.as_tuple(), v.as_tuple()}
+    data = graph.to_dict()
+    data["pipes"] = [p for p in data["pipes"] if {tuple(p["u"]), tuple(p["v"])} != endpoints]
+    return recheck_after_removal(data, endpoints, choices)
+
+
+def delete_cube_proposal(graph, coord, choices=None):
+    """Deleting a cube also removes pipes, so recheck every surviving neighbour."""
+    pos = position(coord)
+    if pos not in graph:
+        raise ValueError("Select an existing cube.")
+    affected = {
+        (p.v if p.u.position == pos else p.u).position.as_tuple() for p in graph.pipes_at(pos)
+    }
+    data = graph.to_dict()
+    data["cubes"] = [c for c in data["cubes"] if tuple(c["position"]) != pos.as_tuple()]
+    data["pipes"] = [
+        p for p in data["pipes"] if pos.as_tuple() not in (tuple(p["u"]), tuple(p["v"]))
+    ]
+    return recheck_after_removal(data, affected, choices)
+
+
+def recheck_after_removal(data, endpoints, choices):
+    cubes, ambiguities, inferred = [], [], []
+    for cube in data["cubes"]:
+        coord = tuple(cube["position"])
+        if coord in endpoints:
+            incident = [p for p in data["pipes"] if coord in (tuple(p["u"]), tuple(p["v"]))]
+            if not incident and cube["kind"] in ("P", "PORT"):
+                continue
+            if cube["kind"] not in ("P", "PORT", "Y"):
+                infer_junction(cube, incident, choices or {}, ambiguities, inferred)
+        cubes.append(cube)
+    data["cubes"] = cubes
+    result = graph_from_data(data)
+    validate_graph(result)
+    return result, ambiguities, inferred
+
+
 def pipe_proposal(graph, u, v, kind, choices=None):
     """Infer internal junctions; dangling endpoints stay explicit open ports."""
     if kind not in PIPE_KINDS + tuple(k + "H" for k in PIPE_KINDS):
@@ -132,6 +247,9 @@ def pipe_proposal(graph, u, v, kind, choices=None):
     if len(cubes) > 150:
         raise ValueError("This preview supports up to 150 cubes.")
     pipes = data["pipes"] + [dict(u=u.as_tuple(), v=v.as_tuple(), kind=kind)]
+    check_junction_directions(
+        graph_from_data(dict(name=graph.name, cubes=list(cubes.values()), pipes=pipes))
+    )
     choices = choices or {}
     ambiguities = []
     inferred = []
@@ -139,36 +257,12 @@ def pipe_proposal(graph, u, v, kind, choices=None):
         coord = endpoint.as_tuple()
         cube = cubes[coord]
         incident = [p for p in pipes if coord in (tuple(p["u"]), tuple(p["v"]))]
-        if cube["kind"] not in ("P", "PORT") or len(incident) < 2:
+        was_port = cube["kind"] in ("P", "PORT")
+        if cube["kind"] == "Y" or len(incident) < 2 or (not was_port and len(incident) < 3):
             continue
-        fits = []
-        # A star isolates the local wall constraints without guessing neighbours' kinds.
-        for candidate in KINDS:
-            if candidate in ("Y", "P"):
-                continue
-            star = BlockGraph("junction check")
-            star.add_cube(endpoint, candidate)
-            try:
-                for i, p in enumerate(incident):
-                    other = tuple(p["v"]) if tuple(p["u"]) == coord else tuple(p["u"])
-                    star.add_cube(Position3D(*other), "P", f"end{i}")
-                    star.add_pipe(Position3D(*p["u"]), Position3D(*p["v"]), p["kind"])
-                validate_graph(star)
-                fits.append(candidate)
-            except Exception:
-                continue
-        if not fits:
-            raise ValueError(f"Pipe colours conflict at {coord}; no compatible cube exists.")
-        chosen = choices.get(",".join(map(str, coord)))
-        if chosen is not None and chosen not in fits:
-            raise ValueError(f"The selected cube at {coord} does not match the pipe colours.")
-        if len(fits) == 1:
-            chosen = fits[0]
-        if chosen is None:
-            ambiguities.append(dict(position=list(coord), kinds=fits))
-            chosen = fits[0]  # Validate a possible completion, never commit it implicitly.
-        cube.update(kind=chosen, label="")
-        inferred.append(dict(position=list(coord), kind=chosen))
+        # Third and later branches can constrain faces hidden by a pass-through.
+        # Recheck concrete junctions too, before surfaces use their ZX vertex type.
+        infer_junction(cube, incident, choices, ambiguities, inferred)
     result = graph_from_data(dict(name=graph.name, cubes=list(cubes.values()), pipes=pipes))
     validate_graph(result)
     return result, ambiguities, inferred

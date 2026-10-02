@@ -60,3 +60,11 @@ Save project creates a portable JSON file. The browser draft is convenient but i
 Source-checkout runs are in `instance/studio/`; installed-app runs use the platform application-data directory unless `--data-dir` is supplied. Each job has its own directory. Do not share an entire data directory unintentionally: run records contain your graph.
 
 If the server restarts, reload the app to obtain its new write token. Save your project before reloading. If a port is already in use, stop the other Studio instance or choose `--port`. A fresh browser port has separate local-storage drafts.
+
+## Keeping junction cubes consistent
+
+When a third or later pipe joins a cube, Studio checks the junction against all its connected pipes, including the swapped walls at Hadamard endpoints. It keeps the current cube if it remains valid, replaces it when the pipes determine a single valid kind, and asks you to choose when several kinds are possible. Pipe placement and cube replacements form one Undo step.
+
+Deleting a pipe also rechecks both surviving endpoints. Any necessary cube replacements are included in the same Undo step. Empty open ports are removed; ordinary cubes remain in place. If the remaining walls admit no compatible cube, the edit is rejected without changing the graph.
+
+For an older graph, use **Correlation surfaces → Check cube kinds**, or **Review cube replacements** when validation offers it. Review the coordinates and old/new kinds, then choose **Apply cube replacements**. This uses TQEC’s hidden-face correction and validates the result without changing the pipes or positions. Find correlation surfaces again afterward: a changed cube kind can change the ZX vertex type and invalidate earlier surfaces. This correction addresses junction cube kinds; other geometry or compiler errors may still need a separate edit.
