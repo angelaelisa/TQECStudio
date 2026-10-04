@@ -33,6 +33,6 @@ The output is `dist\TQEC Studio\TQEC Studio.exe`. Include the whole folder when 
 
 ## Current verification status
 
-The [2026-10-04 Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37199032259), from source commit `ebe5c1b757da8ae7e627f1909f30d1a12da52b3d`, passed all 31 application tests and the frozen executable checks, including real PNG/SVG plot exports on GitHub's Windows x64 runner with Python 3.13.15. The download includes `build-check.json`, the Apache-2.0 licence, third-party notices, dependency licence texts, and Python/Tcl/Tk licence texts. A SHA-256 checksum accompanies the ZIP.
+The [2026-10-04 Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37199478571), from source commit `b52ec3a953c10573fe8239f96c30da83058a205e`, passed all 31 application tests and the frozen executable checks, including real PNG/SVG plot exports on GitHub's Windows x64 runner with Python 3.13.15. The download includes `build-check.json`, the Apache-2.0 licence, third-party notices, dependency licence texts, and Python/Tcl/Tk licence texts. A SHA-256 checksum accompanies the ZIP.
 
 Download the **TQEC-Studio-Windows-Testers** artifact from that run (GitHub sign-in is required). Artifacts expire after 14 days; retain the inner application ZIP to share directly with testers, or run the workflow again. Full launcher interaction, browser opening/shutdown and use on a clean Windows machine still require manual testing. Signed installers and automatic updates are outside this tester build.

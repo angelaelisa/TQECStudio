@@ -21,7 +21,7 @@ Studio listens only on `127.0.0.1:5187`. Keep its terminal running while compili
 
 ## Windows tester download
 
-A portable Windows x64 tester build is available from the [verified Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37199032259). Download the **TQEC-Studio-Windows-Testers** artifact, extract its ZIP, then extract the enclosed application ZIP and double-click **TQEC Studio.exe**. No Python installation is needed. Automated Windows tests and packaged compilation/simulation checks passed; everyday use on testers' computers still needs manual testing. This preview is unsigned. See [Windows tester instructions](docs/WINDOWS_TESTERS.md).
+A portable Windows x64 tester build is available from the [verified Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37199478571). Download the **TQEC-Studio-Windows-Testers** artifact, extract its ZIP, then extract the enclosed application ZIP and double-click **TQEC Studio.exe**. No Python installation is needed. Automated Windows tests and packaged compilation/simulation checks passed; everyday use on testers' computers still needs manual testing. This preview is unsigned. See [Windows tester instructions](docs/WINDOWS_TESTERS.md).
 
 ## Workflow
 
