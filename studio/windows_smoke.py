@@ -57,8 +57,8 @@ def run(output):
                     time.sleep(0.2)
                 assert status["status"] == "complete", status
                 for path in ("crumble", "physical-layers", "physical-slice.svg?tick=0"):
-                    response = client.get(f"/api/jobs/{job}/{path}")
-                    assert response.status_code == 200, response.text
+                    with client.get(f"/api/jobs/{job}/{path}") as response:
+                        assert response.status_code == 200, response.text
                 response = client.post(
                     "/api/simulate",
                     json={
@@ -89,21 +89,21 @@ def run(output):
                 assert all(row["shots"] == 16 for row in simulated["rows"]), simulated
                 exports = ["observable-1.png", "observable-1.svg", "samples.csv", "simulation.json"]
                 for filename in exports:
-                    response = client.get(f"/api/simulations/{simulation}/{filename}")
-                    assert response.status_code == 200, response.text
-                    assert len(response.data) > 100, filename
-                    if filename.endswith(".png"):
-                        assert response.data.startswith(b"\x89PNG\r\n\x1a\n"), filename
-                    if filename.endswith(".svg"):
-                        assert b"<svg" in response.data, filename
+                    with client.get(f"/api/simulations/{simulation}/{filename}") as response:
+                        assert response.status_code == 200, response.text
+                        assert len(response.data) > 100, filename
+                        if filename.endswith(".png"):
+                            assert response.data.startswith(b"\x89PNG\r\n\x1a\n"), filename
+                        if filename.endswith(".svg"):
+                            assert b"<svg" in response.data, filename
                 result.update(
-                    ok=True,
                     compile=status["statistics"],
                     sampled_shots=sum(row["shots"] for row in simulated["rows"]),
                     plot_exports=exports,
                 )
             finally:
                 app.extensions["studio_executor"].shutdown(wait=True)
+        result["ok"] = True
     except BaseException:
         result["error"] = traceback.format_exc()
     Path(output).write_text(json.dumps(result, indent=2), encoding="utf-8")
