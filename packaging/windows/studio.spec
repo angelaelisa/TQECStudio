@@ -17,6 +17,8 @@ for name in ('tqec', 'stim', 'sinter', 'flask', 'matplotlib', 'pymatching'):
 
 a = Analysis([str(root / 'packaging/windows/launch.py')], pathex=[str(root)],
     binaries=binaries, datas=datas, hiddenimports=hiddenimports,
+    # Plot exports choose their backend dynamically from the filename extension.
+    hooksconfig={'matplotlib': {'backends': ['Agg', 'SVG']}},
     excludes=['pytest', 'IPython', 'notebook'], noarchive=False)
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='TQEC Studio',
