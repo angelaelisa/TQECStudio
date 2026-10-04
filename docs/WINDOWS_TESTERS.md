@@ -15,7 +15,7 @@ After the source is in the repository:
 
 The workflow is manual and does not publish a GitHub Release. Artifact retention is 14 days. Original Studio code is licensed under Apache-2.0; bundled dependencies retain their own terms. This unsigned preview is not an official TQEC release.
 
-The automated frozen check verifies packaged static files, a real TQEC memory compilation, Crumble, physical-layer SVG output and a spawned PyMatching sampling worker. Before distribution, also test on a Windows computer with no Python installed: launch, browser opening, graph edits, save/import, plot generation, and stopping the launcher. CI does not establish visual usability, signing or Windows compatibility by itself.
+The automated frozen check initializes the bundled Tk GUI runtime and verifies packaged static files, a real TQEC memory compilation, Crumble, physical-layer SVG output and a spawned PyMatching sampling worker. Early testers should also check on a Windows computer with no Python installed: launch, browser opening, graph edits, save/import, plot generation, and stopping the launcher. CI does not establish visual usability or compatibility with every Windows computer.
 
 ## Build directly on Windows
 
@@ -33,4 +33,6 @@ The output is `dist\TQEC Studio\TQEC Studio.exe`. Include the whole folder when 
 
 ## Current verification status
 
-The packaging source and manual workflow are prepared. A Windows executable is not considered ready until the actual Windows build and frozen checks pass. GUI startup/shutdown and use on a clean Windows machine require a separate manual check. Signed installers and automatic updates are outside this tester build.
+The [2026-10-04 Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37187903674), from source commit `2cb6fce9e7869e088743f58d30fadd293649940d`, passed all 31 application tests and the frozen executable checks on GitHub's Windows x64 runner with Python 3.13.15. The download includes `build-check.json`, the Apache-2.0 licence, third-party notices, dependency licence texts, and Python/Tcl/Tk licence texts. A SHA-256 checksum accompanies the ZIP.
+
+Download the **TQEC-Studio-Windows-Testers** artifact from that run (GitHub sign-in is required). Artifacts expire after 14 days; retain the inner application ZIP to share directly with testers, or run the workflow again. Full launcher interaction, browser opening/shutdown and use on a clean Windows machine still require manual testing. Signed installers and automatic updates are outside this tester build.
