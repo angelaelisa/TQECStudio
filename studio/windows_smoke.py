@@ -14,9 +14,6 @@ def run(output):
     try:
         import tkinter as tk
 
-        import sinter
-        import stim
-
         from studio import create_studio_app
 
         window = tk.Tk()
@@ -62,21 +59,49 @@ def run(output):
                 for path in ("crumble", "physical-layers", "physical-slice.svg?tick=0"):
                     response = client.get(f"/api/jobs/{job}/{path}")
                     assert response.status_code == 200, response.text
-                circuit = stim.Circuit.generated(
-                    "surface_code:rotated_memory_z",
-                    distance=3,
-                    rounds=3,
-                    after_clifford_depolarization=0.001,
+                response = client.post(
+                    "/api/simulate",
+                    json={
+                        "graph": graph,
+                        "revision": found["revision"],
+                        "ks": [1],
+                        "ps": [0.01, 0.03],
+                        "max_shots": 16,
+                        "max_errors": 16,
+                        "num_workers": 1,
+                        "observable_inset": True,
+                        "zoom_bounds": [0.005, 0.001, 0.05, 0.8],
+                        "compilation": {"observable_mode": "auto"},
+                    },
+                    headers=headers,
                 )
-                stats = sinter.collect(
-                    num_workers=1,
-                    tasks=[sinter.Task(circuit=circuit)],
-                    decoders=["pymatching"],
-                    max_shots=16,
-                    max_errors=16,
+                assert response.status_code == 202, response.text
+                simulation = response.json["id"]
+                deadline = time.monotonic() + 180
+                while time.monotonic() < deadline:
+                    simulated = client.get(f"/api/jobs/{simulation}").json
+                    if simulated["status"] in ("complete", "failed"):
+                        break
+                    time.sleep(0.2)
+                assert simulated["status"] == "complete", simulated
+                assert len(simulated["plots"]) == 1, simulated
+                assert len(simulated["rows"]) == 2, simulated
+                assert all(row["shots"] == 16 for row in simulated["rows"]), simulated
+                exports = ["observable-1.png", "observable-1.svg", "samples.csv", "simulation.json"]
+                for filename in exports:
+                    response = client.get(f"/api/simulations/{simulation}/{filename}")
+                    assert response.status_code == 200, response.text
+                    assert len(response.data) > 100, filename
+                    if filename.endswith(".png"):
+                        assert response.data.startswith(b"\x89PNG\r\n\x1a\n"), filename
+                    if filename.endswith(".svg"):
+                        assert b"<svg" in response.data, filename
+                result.update(
+                    ok=True,
+                    compile=status["statistics"],
+                    sampled_shots=sum(row["shots"] for row in simulated["rows"]),
+                    plot_exports=exports,
                 )
-                assert sum(s.shots for s in stats) == 16
-                result.update(ok=True, compile=status["statistics"], sampled_shots=16)
             finally:
                 app.extensions["studio_executor"].shutdown(wait=True)
     except BaseException:
