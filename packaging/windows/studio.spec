@@ -4,7 +4,9 @@ from PyInstaller.utils.hooks import collect_all, copy_metadata
 
 root = Path(SPECPATH).resolve().parents[1]
 datas = [(str(root / name), '.') for name in ('LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md')]
-binaries, hiddenimports = [], []
+binaries = []
+# Stim's native sampler imports NumPy's compatibility modules dynamically.
+hiddenimports = ['numpy.core.multiarray', 'numpy.core._multiarray_umath']
 for name in ('studio', 'tqec', 'tqecd', 'stim', 'sinter', 'pymatching', 'pyzx', 'defusedxml'):
     data, binary, hidden = collect_all(name)
     datas += data
