@@ -57,10 +57,25 @@ def collect(destination, include_runtime=False):
         if python_license is None:
             raise ValueError("CPython runtime licence is missing")
         shutil.copyfile(python_license, runtime / "LICENSE.txt")
+        import tkinter as tk
+
+        window = tk.Tk()
+        try:
+            window.withdraw()
+            runtime_versions = {
+                component: str(window.tk.call("package", "provide", component.capitalize()))
+                for component in ("tcl", "tk")
+            }
+        finally:
+            window.destroy()
         for component in ("tcl", "tk"):
             candidates = sorted((prefix / "tcl").glob(component + "*/license.terms"))
             if not candidates:
-                raise ValueError(f"Bundled {component} runtime licence is missing")
+                version = runtime_versions[component]
+                fallback = ROOT / "packaging" / "licenses" / f"{component}-{version}"
+                if not (fallback / "license.terms.txt").is_file():
+                    raise ValueError(f"Bundled {component} {version} runtime licence is missing")
+                shutil.copytree(fallback, runtime / f"{component}-{version}", dirs_exist_ok=True)
             for source in candidates:
                 shutil.copyfile(source, runtime / (source.parent.name + "-license.terms"))
     (destination / "INDEX.json").write_text(json.dumps(records, indent=2), encoding="utf-8")

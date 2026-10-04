@@ -1,0 +1,6 @@
+Original TCL licence from CPython source dependencies.
+Version: 8.6.15 (CPython dependency tag tcl-core-8.6.15.0)
+Source: https://raw.githubusercontent.com/python/cpython-source-deps/275286594fd3e162af29e8c0ba4e365d3d1f7775/license.terms
+SHA-256: c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16
+Retrieved: 2026-10-04
+Included unchanged when the Windows Python installation omits license.terms.
