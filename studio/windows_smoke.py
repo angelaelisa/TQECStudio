@@ -12,10 +12,20 @@ from pathlib import Path
 def run(output):
     result = {"ok": False}
     try:
+        import tkinter as tk
+
         import sinter
         import stim
 
         from studio import create_studio_app
+
+        window = tk.Tk()
+        try:
+            window.withdraw()
+            window.update()
+            result["tk_version"] = str(window.tk.call("info", "patchlevel"))
+        finally:
+            window.destroy()
 
         with tempfile.TemporaryDirectory() as directory:
             os.environ["MPLCONFIGDIR"] = str(Path(directory) / "matplotlib")
