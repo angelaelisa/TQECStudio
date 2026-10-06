@@ -1,6 +1,7 @@
 """Exercise real frozen assets, compiler, diagramming and spawned decoder workers."""
 
 import json
+import mimetypes
 import os
 import re
 import tempfile
@@ -32,8 +33,29 @@ def run(output):
                 page = client.get("/").text
                 token = re.search(r'name="studio-token" content="([^"]+)"', page)[1]
                 headers = {"X-Studio-Token": token}
-                for asset in ("studio.js", "studio.css", "physical_layers.js", "favicon.svg"):
-                    assert client.get("/static/" + asset).status_code == 200
+                assets = {
+                    "studio.js": "text/javascript",
+                    "compilation.js": "text/javascript",
+                    "simulation.js": "text/javascript",
+                    "physical_layers.js": "text/javascript",
+                    "studio.css": "text/css",
+                    "favicon.svg": "image/svg+xml",
+                }
+                # Reproduce a Windows registry mapping that would block JavaScript.
+                mimetypes.init()
+                original_types = mimetypes.types_map.copy()
+                try:
+                    for extension in (".js", ".css", ".svg"):
+                        mimetypes.add_type("text/plain", extension)
+                    for asset, expected in assets.items():
+                        with client.get("/static/" + asset) as response:
+                            assert response.status_code == 200, asset
+                            assert response.mimetype == expected, (asset, response.content_type)
+                            assert response.headers["X-Content-Type-Options"] == "nosniff"
+                    result["asset_mime_types"] = assets
+                finally:
+                    mimetypes.types_map.clear()
+                    mimetypes.types_map.update(original_types)
                 graph = client.get("/api/example/memory").json["graph"]
                 found = client.post("/api/surfaces", json=graph, headers=headers).json
                 response = client.post(
