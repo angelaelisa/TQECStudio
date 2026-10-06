@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import re
+from pathlib import PurePosixPath
 from urllib.parse import urlsplit
 
 from defusedxml import ElementTree
@@ -97,6 +98,14 @@ def configure_security(app):
 
     @app.after_request
     def response_headers(response):
+        if request.endpoint == "static" and response.status_code in (200, 304):
+            # Windows registry associations can mislabel scripts as text/plain.
+            # These are trusted bundled assets, never user-uploaded files.
+            suffix = PurePosixPath(request.view_args["filename"]).suffix.lower()
+            asset_types = {".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml"}
+            if suffix in asset_types:
+                response.content_type = asset_types[suffix] + "; charset=utf-8"
+            response.headers["Cache-Control"] = "no-store"
         script_policy = "'self'"
         if request.endpoint == "crumble_viewer" and response.status_code == 200:
             # Stim ships one self-contained script. Authorize only its exact content.

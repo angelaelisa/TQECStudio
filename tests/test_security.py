@@ -86,6 +86,27 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertNotIn("private filesystem detail", response.text)
 
+    def test_static_assets_ignore_incorrect_system_mime_types(self):
+        from unittest.mock import patch
+
+        with patch("mimetypes.guess_type", return_value=("text/plain", None)):
+            for asset, expected in (
+                ("studio.js", "text/javascript"),
+                ("compilation.js", "text/javascript"),
+                ("simulation.js", "text/javascript"),
+                ("physical_layers.js", "text/javascript"),
+                ("studio.css", "text/css"),
+                ("favicon.svg", "image/svg+xml"),
+            ):
+                with self.subTest(asset=asset), self.client.get("/static/" + asset) as response:
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.mimetype, expected)
+                    self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+                    self.assertEqual(response.headers["Cache-Control"], "no-store")
+            with self.client.get("/static/missing.js") as response:
+                self.assertEqual(response.status_code, 404)
+                self.assertEqual(response.mimetype, "application/json")
+
     def test_malicious_dae_imports(self):
         malicious = [
             b'<!DOCTYPE x [<!ENTITY test SYSTEM "file:///etc/passwd">]><COLLADA>&test;</COLLADA>',
