@@ -52,8 +52,12 @@ def collect(destination, include_runtime=False):
         runtime.mkdir(exist_ok=True)
         prefix = Path(sys.base_prefix)
         python_license = next(
-            (prefix / n for n in ("LICENSE.txt", "LICENSE", "Resources/LICENSE.txt",
-                                  "Resources/LICENSE") if (prefix / n).is_file()), None
+            (
+                prefix / n
+                for n in ("LICENSE.txt", "LICENSE", "Resources/LICENSE.txt", "Resources/LICENSE")
+                if (prefix / n).is_file()
+            ),
+            None,
         )
         if python_license is None:
             raise ValueError("CPython runtime licence is missing")
@@ -68,17 +72,23 @@ def collect(destination, include_runtime=False):
                 for component in ("tcl", "tk")
             }
             runtime_libraries = {
-                "tcl": Path(window.tk.call("info", "library")),
-                "tk": Path(window.tk.call("set", "tk_library")),
+                "tcl": Path(str(window.tk.call("info", "library"))),
+                "tk": Path(str(window.tk.call("set", "tk_library"))),
             }
         finally:
             window.destroy()
         for component in ("tcl", "tk"):
             candidates = sorted((prefix / "tcl").glob(component + "*/license.terms"))
             library = runtime_libraries[component]
-            candidates += [p for p in (library / "license.terms",
-                            library.parent / "license.terms",
-                            library.parent / "Resources/license.terms") if p.is_file()]
+            candidates += [
+                p
+                for p in (
+                    library / "license.terms",
+                    library.parent / "license.terms",
+                    library.parent / "Resources/license.terms",
+                )
+                if p.is_file()
+            ]
             if not candidates:
                 version = runtime_versions[component]
                 fallback = ROOT / "packaging" / "licenses" / f"{component}-{version}"
