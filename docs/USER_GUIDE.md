@@ -4,7 +4,7 @@
 
 Choose an example or start empty. Drag a pipe onto a highlighted lattice edge. Pipes join neighbouring logical positions; the drawing uses one square for each cube and two squares for each pipe. The extra visual length adds no circuit time. X faces are red, Z faces blue, and a yellow band marks a Hadamard transition.
 
-Studio infers junction cubes from pipe walls and asks you to choose when several kinds are possible. In **Cubes · cap or replace**, the palette offers only valid choices for the selected endpoint. Drag a cube onto an open port, click a valid replacement for a selected cube, or choose the translucent open-port symbol to reopen a leaf. Y caps are offered only on compatible time-direction endpoints. The installed compiler cannot compile Y cubes yet.
+Studio infers junction cubes from pipe walls. When several kinds fit, it uses the first compatible kind in the cube palette automatically; further pipes can update that kind as needed. In **Cubes · cap or replace**, the palette offers only valid choices for the selected endpoint. Drag a cube onto an open port, click a valid replacement for a selected cube, or choose the translucent open-port symbol to reopen a leaf. Y caps are offered only on compatible time-direction endpoints. The installed compiler cannot compile Y cubes yet.
 
 Click a pipe to inspect it, toggle a compatible Hadamard, or delete it. Its entry scrolls into view without changing list order. Undo and redo restore graph edits. Rotate or drag empty canvas to orbit, scroll to move up/down through the workspace, hold Ctrl/Cmd while scrolling to zoom, and use Fit when needed. Label and origin checkboxes keep the drawing clean. Cube numbers follow coordinate ordering and can change when the graph changes; they are not permanent identifiers.
 
@@ -14,7 +14,7 @@ Use **Measurement caps → Cap all ports · X / Z** in Design to fill every open
 
 ## Keyboard editing
 
-Select an existing pipe, then press **X**, **Y** or **Z** to add a pipe in the positive graph-axis direction. Hold **Shift** for the negative direction. Studio checks both endpoints and the compatible wall colours with the same validation used for dragging. If several placements are valid, choose the kind and starting coordinates in the dialog; junction ambiguities still require a cube choice. The **H** checkbox controls whether the new pipe has a Hadamard transition. The new pipe becomes selected, ready for the next extension.
+Select an existing pipe, then press **X**, **Y** or **Z** to add a pipe in the positive graph-axis direction. Hold **Shift** for the negative direction. Studio checks both endpoints and the compatible wall colours with the same validation used for dragging. If several placements are valid, choose the kind and starting coordinates in the dialog; junction cubes are chosen automatically. The **H** checkbox controls whether the new pipe has a Hadamard transition. The new pipe becomes selected, ready for the next extension.
 
 Use **Ctrl/Cmd + Z** to undo and **Ctrl/Cmd + Y** or **Ctrl/Cmd + Shift + Z** to redo. In Design, **Delete/Backspace** deletes the selected pipe, or the selected cube together with its connected pipes, **Escape** clears selection, and **F** fits the view. Typing fields, open dialogs and active edits suspend these shortcuts. Direction keys follow graph axes regardless of camera rotation. Use the palette to create the first pipe in an empty graph.
 
@@ -63,7 +63,7 @@ If the server restarts, reload the app to obtain its new write token. Save your 
 
 ## Keeping junction cubes consistent
 
-When a third or later pipe joins a cube, Studio checks the junction against all its connected pipes, including the swapped walls at Hadamard endpoints. It keeps the current cube if it remains valid, replaces it when the pipes determine a single valid kind, and asks you to choose when several kinds are possible. Pipe placement and cube replacements form one Undo step.
+Whenever a second or later pipe joins a cube, Studio checks the junction against all its connected pipes, including the swapped walls at Hadamard endpoints. It keeps the current cube if it remains valid, otherwise replaces it with the first compatible kind in the cube palette, without interrupting pipe placement. Pipe placement and cube replacements form one Undo step.
 
 Deleting a pipe also rechecks both surviving endpoints. Any necessary cube replacements are included in the same Undo step. Empty open ports are removed; ordinary cubes remain in place. If the remaining walls admit no compatible cube, the edit is rejected without changing the graph.
 

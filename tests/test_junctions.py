@@ -35,6 +35,20 @@ def straight(axis=2, kind="ZXZ", pipe="ZXO", origin=(0, 0, 0)):
 
 
 class JunctionTests(unittest.TestCase):
+    def test_second_pipe_updates_a_capped_endpoint_automatically(self):
+        graph = BlockGraph("Extend capped endpoint")
+        graph.add_cube(P(0, 0, 0), "P", "input")
+        graph.add_cube(P(0, 0, 1), "ZXZ", "cap")
+        graph.add_pipe(P(0, 0, 0), P(0, 0, 1), "ZXO")
+        original = graph.to_dict()
+        result, ambiguities, inferred = pipe_proposal(graph, [0, 0, 1], [0, 1, 1], "ZOX")
+        self.assertFalse(ambiguities)
+        self.assertEqual(str(result[P(0, 0, 1)].kind), "ZXX")
+        self.assertEqual(result[P(0, 0, 1)].label, "cap")
+        self.assertEqual(inferred[0]["previous"], "ZXZ")
+        self.assertEqual(graph.to_dict(), original)
+        validate_graph(result)
+
     def test_original_parity_error_is_prevented_before_surface_discovery(self):
         graph = BlockGraph("Third branch parity regression")
         for z, kind in ((-1, "ZXX"), (0, "ZXZ"), (1, "ZXX")):

@@ -151,7 +151,7 @@ def matching_cube_kinds(endpoint, incident):
 
 
 def infer_junction(cube, incident, choices, ambiguities, inferred):
-    """Preserve a valid kind; replace a forced kind or request a boundary choice."""
+    """Preserve a valid kind, otherwise use the first compatible palette kind."""
     coord = tuple(cube["position"])
     fits = matching_cube_kinds(Position3D(*coord), incident)
     if not fits:
@@ -164,8 +164,7 @@ def infer_junction(cube, incident, choices, ambiguities, inferred):
     if len(fits) == 1:
         chosen = fits[0]
     if chosen is None:
-        ambiguities.append(dict(position=list(coord), kinds=fits))
-        chosen = fits[0]  # Validate a completion without committing an ambiguous choice.
+        chosen = fits[0]
     previous = cube["kind"]
     cube.update(kind=chosen, label="" if previous in ("P", "PORT") else cube["label"])
     if chosen != previous:
@@ -257,11 +256,10 @@ def pipe_proposal(graph, u, v, kind, choices=None):
         coord = endpoint.as_tuple()
         cube = cubes[coord]
         incident = [p for p in pipes if coord in (tuple(p["u"]), tuple(p["v"]))]
-        was_port = cube["kind"] in ("P", "PORT")
-        if cube["kind"] == "Y" or len(incident) < 2 or (not was_port and len(incident) < 3):
+        if cube["kind"] == "Y" or len(incident) < 2:
             continue
-        # Third and later branches can constrain faces hidden by a pass-through.
-        # Recheck concrete junctions too, before surfaces use their ZX vertex type.
+        # Every new connection can constrain a capped endpoint or hidden face.
+        # Recheck concrete cubes too, before surfaces use their ZX vertex type.
         infer_junction(cube, incident, choices, ambiguities, inferred)
     result = graph_from_data(dict(name=graph.name, cubes=list(cubes.values()), pipes=pipes))
     validate_graph(result)
