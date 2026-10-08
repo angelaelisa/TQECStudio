@@ -1123,7 +1123,7 @@ document.addEventListener('pointermove', e => {
     }
   }
   draw();
-  if (drag.target) message(`Release to place ${kind} at (${drag.target.position.join(', ')})${drag.target.ambiguous?' · junction choice required':''}.`);
+  if (drag.target) message(`Release to place ${kind} at (${drag.target.position.join(', ')}). Junction cubes are chosen automatically.`);
   else message(drag.options.length ? 'Move onto a green target. Other positions cannot accept this block.' : 'Checking compatible positions…');
 }, {
   passive: false

@@ -101,7 +101,7 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(self.post("/api/place", {}).status_code, 404)
         self.assertEqual(self.post("/api/placements", {}).status_code, 404)
 
-    def test_pipe_first_inference_and_ambiguity(self):
+    def test_pipe_first_inference_and_automatic_default(self):
         empty = self.example("empty")
         first = self.post(
             "/api/place-pipe", dict(graph=empty, u=[0, 0, 0], v=[0, 0, 1], kind="ZXO")
@@ -115,9 +115,19 @@ class StudioTests(unittest.TestCase):
         self.assertEqual(junction["kind"], "ZXX")
         self.assertEqual(len(turn.json["graph"]["ports"]), 2)
         straight = dict(graph=graph, u=[0, 0, 1], v=[0, 0, 2], kind="ZXO")
-        ambiguous = self.post("/api/place-pipe", straight)
-        self.assertEqual(set(ambiguous.json["ambiguities"][0]["kinds"]), {"ZXZ", "ZXX"})
-        self.assertNotIn("graph", ambiguous.json)
+        automatic = self.post("/api/place-pipe", straight)
+        self.assertEqual(automatic.status_code, 200, automatic.json)
+        self.assertNotIn("ambiguities", automatic.json)
+        junction = next(c for c in automatic.json["graph"]["cubes"] if c["position"] == [0, 0, 1])
+        self.assertEqual(junction["kind"], "ZXZ")
+        branch = self.post(
+            "/api/place-pipe",
+            dict(graph=automatic.json["graph"], u=[0, 0, 1], v=[0, 1, 1], kind="ZOX"),
+        )
+        self.assertEqual(branch.status_code, 200, branch.json)
+        self.assertNotIn("ambiguities", branch.json)
+        junction = next(c for c in branch.json["graph"]["cubes"] if c["position"] == [0, 0, 1])
+        self.assertEqual(junction["kind"], "ZXX")
         resolved = self.post("/api/place-pipe", {**straight, "choices": {"0,0,1": "ZXZ"}})
         self.assertEqual(resolved.status_code, 200, resolved.json)
         self.assertEqual(len(resolved.json["graph"]["pipes"]), 2)
