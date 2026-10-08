@@ -1,0 +1,6 @@
+Original tcl licence, included unchanged.
+Version: 8.6.16
+Source: https://github.com/tcltk/tcl/blob/core-8-6-16/license.terms
+SHA-256: c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16
+Retrieved: 2026-10-08
+Fallback when the installed Python runtime omits the licence text.

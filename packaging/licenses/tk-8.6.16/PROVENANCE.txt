@@ -1,0 +1,6 @@
+Original tk licence, included unchanged.
+Version: 8.6.16
+Source: https://github.com/tcltk/tk/blob/core-8-6-16/license.terms
+SHA-256: 2cde822b93ca16ae535c954b7dfe658b4ad10df2a193628d1b358f1765e8b198
+Retrieved: 2026-10-08
+Fallback when the installed Python runtime omits the licence text.
