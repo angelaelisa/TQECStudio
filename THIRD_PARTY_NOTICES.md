@@ -31,7 +31,7 @@ Studio's minimal X/Z port-capping adapter in `studio/graph.py` adapts the endpoi
 
 `requirements.lock` records the complete pinned Python environment, including indirect dependencies. They use a mixture of licences; they are not all Apache-2.0. Examples include Certifi's MPL-2.0 terms, tqdm's MPL-2.0/MIT terms, and Docutils' per-file licensing. Scientific wheels also include their own bundled-library notices and applicable exceptions.
 
-The Windows package includes:
+The Windows and Mac packages include:
 
 - Studio's `LICENSE`, `NOTICE` and this document at the top level.
 - `third_party_licenses/`, with original licence, copyright and attribution files collected from the installed locked Python distributions, along with each distribution's metadata and an index.

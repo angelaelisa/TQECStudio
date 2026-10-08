@@ -19,9 +19,11 @@ On macOS, after installation, double-click **Launch Studio.command**. The source
 
 Studio listens only on `127.0.0.1:5187`. Keep its terminal running while compiling or sampling. Do not expose this single-user application through a public server, reverse proxy or tunnel.
 
-## Windows tester download
+## Desktop preview downloads
 
-A portable Windows x64 tester build is available from the [verified Windows build](https://github.com/angelaelisa/TQECStudio/actions/runs/37424276623). Download the **TQEC-Studio-Windows-Testers** artifact, extract its ZIP, then extract the enclosed application ZIP and double-click **TQEC Studio.exe**. No Python installation is needed. Automated Windows tests and packaged compilation/simulation checks passed; everyday use on testers' computers still needs manual testing. This preview is unsigned. See [Windows tester instructions](docs/WINDOWS_TESTERS.md).
+Download the portable **Windows x64**, **Mac Apple Silicon**, or **Mac Intel** package from the [desktop preview release](https://github.com/angelaelisa/TQECStudio/releases/tag/v0.1.0rc2). No Python setup or GitHub account is required. Extract the ZIP, then open **TQEC Studio.exe** on Windows or **TQEC Studio.app** on Mac.
+
+These are unsigned tester previews, not official TQEC releases. Mac bundles are not Apple Developer ID signed or notarized. See [desktop download instructions](docs/DESKTOP_DOWNLOADS.md) for requirements, startup help and verification details. Automated package checks do not replace testing on users’ own computers.
 
 ## Workflow
 
