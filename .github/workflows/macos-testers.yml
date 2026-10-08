@@ -17,9 +17,9 @@ jobs:
             label: Intel
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
-    env:
-      MPLCONFIGDIR: ${{ runner.temp }}/tqec-matplotlib
     steps:
+      - name: Set local plotting cache
+        run: echo "MPLCONFIGDIR=$RUNNER_TEMP/tqec-matplotlib" >> "$GITHUB_ENV"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
