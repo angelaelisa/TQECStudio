@@ -1,0 +1,25 @@
+TQEC STUDIO - MAC TESTER PREVIEW
+
+1. Download the package for your Mac: Apple Silicon (M1/M2/M3/M4 and later)
+   or Intel. Check Apple menu > About This Mac if you are unsure.
+2. Double-click the ZIP to extract it.
+3. Move TQEC Studio.app to Applications, then double-click it.
+4. Studio opens in your usual browser. No Python installation is needed.
+
+Keep the small TQEC Studio launcher window open while working.
+Save project in the browser to keep a portable copy of your graph.
+When finished, save your project and click Stop Studio.
+
+This is an experimental preview, not an official TQEC release.
+It is not signed with an Apple Developer ID or notarized by Apple.
+macOS may block launching the download. Only if you trust the source, use
+System Settings > Privacy & Security > Open Anyway, then confirm Open.
+Do not disable Gatekeeper globally. If Open Anyway is not offered, contact
+ the project owner rather than changing your security settings.
+
+Apple Silicon package: macOS 14 or later.
+Intel package: macOS 15 or later.
+Compilation and simulation run on your computer at 127.0.0.1:5187.
+Close any other running Studio copy if the application fails to start.
+Launcher log: ~/Library/Application Support/TQEC Studio/launcher.log
+Share error details with the project owner after checking for private data.

@@ -1,0 +1,70 @@
+name: Build Mac tester apps
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            architecture: arm64
+            label: Apple-Silicon
+          - runner: macos-15-intel
+            architecture: x64
+            label: Intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      MPLCONFIGDIR: ${{ runner.temp }}/tqec-matplotlib
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.13.5'
+          architecture: ${{ matrix.architecture }}
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Verify desktop runtime
+        run: python -c 'import tkinter as tk; w=tk.Tk(); w.withdraw(); print(w.tk.call("package", "provide", "Tcl"), w.tk.call("package", "provide", "Tk")); w.destroy()'
+      - run: python -m pip install --require-hashes -r requirements.lock
+      - run: python -m pip install --no-deps -e .
+      - run: python -m pip check
+      - name: Collect third-party licence texts
+        run: python scripts/collect_licenses.py --output "$RUNNER_TEMP/studio-third-party-licenses" --include-runtime
+      - run: python -m unittest discover -s tests -v
+      - run: python -m pip install pyinstaller==6.22.3
+      - run: python -m PyInstaller --noconfirm --clean packaging/macos/studio.spec
+      - name: Test the frozen application
+        run: |
+          report="$RUNNER_TEMP/frozen-smoke.json"
+          'dist/TQEC Studio.app/Contents/MacOS/TQEC Studio' --smoke-test "$report" &
+          process=$!
+          for attempt in $(seq 1 120); do
+            if ! kill -0 "$process" 2>/dev/null; then break; fi
+            sleep 2
+          done
+          if kill -0 "$process" 2>/dev/null; then kill "$process"; echo 'Frozen test timed out'; exit 1; fi
+          wait "$process"
+          python -c 'import json,sys; r=json.load(open(sys.argv[1])); print(r); assert r.get("ok") and not r.get("error")' "$report"
+          cp "$report" 'dist/build-check.json'
+      - name: Package for testers
+        run: |
+          mkdir -p tester-download/staging
+          cp -R 'dist/TQEC Studio.app' tester-download/staging/
+          cp packaging/macos/START-HERE.txt LICENSE NOTICE THIRD_PARTY_NOTICES.md dist/build-check.json tester-download/staging/
+          cp -R "$RUNNER_TEMP/studio-third-party-licenses" tester-download/staging/third_party_licenses
+          ditto -c -k --sequesterRsrc --keepParent tester-download/staging 'tester-download/TQEC-Studio-Mac-${{ matrix.label }}-Testers.zip'
+          cd tester-download
+          shasum -a 256 'TQEC-Studio-Mac-${{ matrix.label }}-Testers.zip' > 'TQEC-Studio-Mac-${{ matrix.label }}-Testers.zip.sha256'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: TQEC-Studio-Mac-${{ matrix.label }}-Testers
+          path: |
+            tester-download/*.zip
+            tester-download/*.sha256
+          retention-days: 14
