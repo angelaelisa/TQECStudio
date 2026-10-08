@@ -60,7 +60,12 @@ def collect(destination, include_runtime=False):
             None,
         )
         if python_license is None:
-            raise ValueError("CPython runtime licence is missing")
+            version = ".".join(map(str, sys.version_info[:3]))
+            fallback = ROOT / "packaging" / "licenses" / f"cpython-{version}"
+            python_license = fallback / "LICENSE.txt"
+            if not python_license.is_file():
+                raise ValueError(f"CPython {version} runtime licence is missing")
+            shutil.copyfile(fallback / "PROVENANCE.txt", runtime / "PROVENANCE.txt")
         shutil.copyfile(python_license, runtime / "LICENSE.txt")
         import tkinter as tk
 

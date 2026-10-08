@@ -1,0 +1,6 @@
+Original cpython licence, included unchanged.
+Version: 3.13.5
+Source: https://github.com/python/cpython/blob/v3.13.5/LICENSE
+SHA-256: 78b12c3a81360b357002334f0e70ea0e92eebf7a9b358805c03c48484945f3bb
+Retrieved: 2026-10-08
+Fallback when the installed Python runtime omits the licence text.
