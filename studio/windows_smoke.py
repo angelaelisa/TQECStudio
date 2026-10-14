@@ -33,6 +33,35 @@ def run(output):
                 page = client.get("/").text
                 token = re.search(r'name="studio-token" content="([^"]+)"', page)[1]
                 headers = {"X-Studio-Token": token}
+                # Windows tester builds include the isolated headless engine.
+                from studio.topologiq_integration import bundled_engine
+
+                if bundled_engine() is not None:
+                    generated = client.post(
+                        "/api/topologiq",
+                        json={
+                            "qasm": 'OPENQASM 2.0;\ninclude "qelib1.inc";\nqreg q[2];\nh q[0];\nh q[0];\ncx q[0],q[1];',
+                            "reduce": True,
+                            "strategy": "bfs-cross",
+                        },
+                        headers=headers,
+                    )
+                    assert generated.status_code == 200, generated.text
+                    topo_graph = generated.json["graph"]
+                    result["topologiq"] = dict(
+                        cubes=len(topo_graph["cubes"]), pipes=len(topo_graph["pipes"])
+                    )
+                    dae = client.post("/api/export/dae", json=topo_graph, headers=headers)
+                    assert dae.status_code == 200, dae.text
+                    import io
+
+                    imported = client.post(
+                        "/api/import",
+                        data={"file": (io.BytesIO(dae.data), "topologiq.dae")},
+                        headers=headers,
+                    )
+                    assert imported.status_code == 200, imported.text
+                    result["collada_round_trip"] = True
                 assets = {
                     "studio.js": "text/javascript",
                     "compilation.js": "text/javascript",

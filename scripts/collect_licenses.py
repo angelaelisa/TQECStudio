@@ -11,12 +11,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def collect(destination, include_runtime=False):
+def collect(destination, include_runtime=False, packages=None):
     destination.mkdir(parents=True, exist_ok=True)
     records = []
-    for name, version in re.findall(
-        r"^([\w-]+)==([^\s]+)", (ROOT / "requirements.lock").read_text(), re.M
-    ):
+    distributions = (
+        re.findall(r"^([\w-]+)==([^\s]+)", (ROOT / "requirements.lock").read_text(), re.M)
+        if packages is None
+        else [(name, metadata.version(name)) for name in packages]
+    )
+    for name, version in distributions:
         dist = metadata.distribution(name)
         if dist.version != version:
             raise ValueError(f"Expected {name} {version}, installed {dist.version}")
@@ -110,6 +113,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--include-runtime", action="store_true")
+    parser.add_argument("--packages", nargs="+")
     args = parser.parse_args()
-    records = collect(args.output, args.include_runtime)
-    print(f"Collected licence texts for {len(records)} locked Python distributions.")
+    records = collect(args.output, args.include_runtime, args.packages)
+    print(f"Collected licence texts for {len(records)} Python distributions.")

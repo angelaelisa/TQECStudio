@@ -11,6 +11,9 @@ Save project in the browser to keep a portable copy of your graph.
 When finished, save your project and click Stop Studio.
 
 Keep the entire extracted folder together, including _internal.
+Keep the TopologiqEngine folder too: it contains the isolated circuit-to-blockgraph engine.
+No separate Python or Topologiq installation is needed for this Windows package.
+In Design, open Generate with Topologiq to use it. Measurements are not supported yet.
 You cannot run the application directly inside the ZIP.
 
 Compilation, simulation and saved results stay on your own computer.

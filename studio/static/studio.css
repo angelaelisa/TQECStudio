@@ -16,11 +16,13 @@ body {
 }
 
 header {
-  height: 78px;
+  min-height: 78px;
+  height: auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 28px;
-  padding: 0 28px;
+  padding: 14px 28px;
   background: white;
   border-bottom: 1px solid var(--line)
 }
@@ -55,6 +57,7 @@ header {
 }
 
 header>input {
+  flex: 1 1 140px;
   max-width: 290px;
   border-color: transparent;
   font-weight: 600;
@@ -64,7 +67,30 @@ header>input {
 .file-actions {
   margin-left: auto;
   display: flex;
+  align-items: center;
+  flex-shrink: 0;
   gap: 8px
+}
+
+.file-actions button {
+  white-space: nowrap;
+}
+
+.file-actions #save-format {
+  width: 170px;
+  margin: 0;
+}
+
+#topologiq-controls { margin-top: 18px; }
+.topologiq-reduction { display: flex; align-items: center; gap: 8px; }
+#topologiq-reduce, #topologiq-twins { width: auto; margin: 0; flex-shrink: 0; }
+#topologiq-qasm {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d6e0e3;
+  border-radius: 6px;
+  font: 12px/1.5 ui-monospace, monospace;
+  resize: vertical;
 }
 
 button,
@@ -530,7 +556,8 @@ footer {
   }
 
   .file-actions {
-    margin-left: 0
+    margin-left: 0;
+    width: 100%;
   }
 
   .steps {
@@ -1008,3 +1035,17 @@ main.workspace-full:has(.canvas-section:not([hidden])) .canvas-section {
 .physical-slice-buttons button { padding-left: 8px; padding-right: 8px; }
 .physical-zoom-buttons output { flex: 1; }
 .physical-zoom-buttons button { flex: 0 0 42px; }
+
+/* Keep the format and Save together, with Open visible on narrow screens. */
+@media (max-width: 480px) {
+  .file-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .file-actions #open {
+    grid-column: 1 / -1;
+  }
+  .file-actions #save-format {
+    width: 100%;
+  }
+}

@@ -1519,6 +1519,41 @@ function setupLabelControls() {
 }
 setupLabelControls();
 $('layer').oninput = draw;
+$('topologiq-compact-preset').onclick = () => {
+  $('topologiq-strategy').value = 'bfs-cycles';
+  $('topologiq-gravity').value = '7';
+  $('topologiq-twins').checked = false;
+  message('Compact preset selected: gravity 7, cycle traversal, twins off.');
+};
+$('topologiq-generate').onclick = async () => {
+  if (busy) return;
+  busy = true;
+  $('topologiq-generate').disabled = true;
+  const gen = generation;
+  message('Topologiq is generating a blockgraph…');
+  try {
+    const res = await api('/api/topologiq', {
+      qasm: $('topologiq-qasm').value,
+      strategy: $('topologiq-strategy').value,
+      gravity: Number($('topologiq-gravity').value),
+      twins: $('topologiq-twins').checked,
+      reduce: $('topologiq-reduce').checked,
+      reduction_mode: $('topologiq-reduction-mode').value,
+      name: 'Topologiq circuit'
+    });
+    if (gen !== generation) {
+      message('Your graph changed during generation. Generate again to replace it.', true);
+      return;
+    }
+    commit(res.graph);
+    message('Topologiq blockgraph loaded and validated by TQEC. Undo restores your design.');
+  } catch (e) {
+    message(e.message, true);
+  } finally {
+    busy = false;
+    $('topologiq-generate').disabled = false;
+  }
+};
 $('load-example').onclick = async () => {
   if (busy) return;
   busy = true;
@@ -1549,7 +1584,30 @@ $('file').onchange = async () => {
     $('file').value = '';
   }
 };
-$('save').onclick = () => {
+$('save').onclick = async () => {
+  if ($('save-format').value === 'dae') {
+    $('save').disabled = true;
+    try {
+      const response = await fetch('/api/export/dae', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Studio-Token': token},
+        body: JSON.stringify(graph)
+      });
+      if (!response.ok) throw Error((await response.json()).error || 'COLLADA export failed.');
+      const url = URL.createObjectURL(await response.blob());
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = (graph.name.replace(/[^\w -]/g, '').trim() || 'project') + '.dae';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      message('COLLADA (.dae) download prepared for TQEC.');
+    } catch (e) {
+      message(e.message, true);
+    } finally {
+      $('save').disabled = false;
+    }
+    return;
+  }
   const data = {
     schema: 'tqec-studio/1',
     graph

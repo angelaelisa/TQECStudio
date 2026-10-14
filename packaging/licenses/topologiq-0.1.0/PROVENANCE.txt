@@ -1,0 +1,4 @@
+Original upstream files from https://github.com/tqec/topologiq
+Commit: d010bd3e63686c93c12c922a84a944a3386ac785
+LICENSE, NOTICE and ETHICAL_NOTICE.md copied without content changes.
+The upstream wheel omits these files; retain them with redistributed engine binaries.

@@ -17,6 +17,10 @@
 <input id="name" aria-label="Project name" value="Untitled graph" maxlength="120">
 <div class="file-actions">
 <button id="open">Open project</button>
+<select id="save-format" aria-label="Project download format">
+<option value="json">JSON (.tqec.json)</option>
+<option value="dae">COLLADA (.dae)</option>
+</select>
 <button id="save" class="primary">Save project</button>
 <input type="file" id="file" accept=".json,.dae" hidden>
 </div>
@@ -47,6 +51,33 @@
 </select>
 </label>
 <button id="load-example">Load example</button>
+<details id="topologiq-controls">
+<summary>Generate with Topologiq</summary>
+<p class="hint">Create a blockgraph from an OpenQASM 2 circuit. Preview support: H, X, Z, CNOT and CZ.</p>
+<label for="topologiq-qasm">Quantum circuit (OpenQASM)</label>
+<textarea id="topologiq-qasm" rows="7" maxlength="20000" spellcheck="false">OPENQASM 2.0;
+include "qelib1.inc";
+qreg q[2];
+cx q[0],q[1];</textarea>
+<label>Traversal strategy<select id="topologiq-strategy">
+<option value="bfs-cross">BFS · prioritize cross edges</option>
+<option value="bfs-cycles">BFS · prioritize cycles</option>
+<option value="bfs">BFS · standard</option>
+<option value="bfs-layers">BFS · circuit layers</option>
+</select></label>
+<label>Gravity weight<input id="topologiq-gravity" type="number" min="0" max="100" step="1" value="7"></label>
+<label class="topologiq-reduction"><input type="checkbox" id="topologiq-twins"> Enable twins</label>
+<button id="topologiq-compact-preset">Use compact preset</button>
+<p class="hint">Compact preset: gravity 7, cycle traversal and twins off. Twins can improve completion for larger graphs but may use more cubes. The best layout depends on the circuit.</p>
+<label class="topologiq-reduction"><input type="checkbox" id="topologiq-reduce" checked> Apply reduction before generation</label>
+<label>Reduction method<select id="topologiq-reduction-mode">
+<option value="topologiq">Topologiq · enhanced bialgebra</option>
+<option value="pyzx">PyZX · full reduction</option>
+</select></label>
+<p class="hint">Enhanced reduction adds red/green conversion, phase-free simplification and Topologiq's stronger bialgebra rule. It does not assume particular input states or measurement outcomes.</p>
+<button id="topologiq-generate">Generate blockgraph</button>
+<p class="hint">Replaces the current graph when successful. Undo restores your design. No fixed qubit limit. No generation time limit. Preview limits: 60 operations and 150 generated cubes. Non-Clifford and measurement circuits are not supported in this preview.</p>
+</details>
 <div class="divider">
 </div>
 <div class="eyebrow">PIPE PALETTE</div>

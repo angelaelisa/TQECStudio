@@ -19,6 +19,7 @@ from tqec.utils.exceptions import TQECError
 from tqec.utils.position import Position3D
 from tqec.utils.scale import LinearFunction
 from werkzeug.exceptions import HTTPException
+from werkzeug.utils import secure_filename
 
 from .compilation import compilation_settings, noise_model
 from .graph import (
@@ -150,6 +151,31 @@ def create_studio_app(data_dir=None):
         fixed, changes = corrected_cube_kinds(graph)
         validate_graph(fixed)
         return jsonify(graph=fixed.to_dict(), changes=changes)
+
+    @app.post("/api/topologiq")
+    def topologiq_generate():
+        from .topologiq_integration import generate_blockgraph
+
+        return jsonify(graph=generate_blockgraph(request.get_json()).to_dict())
+
+    @app.post("/api/export/dae")
+    def export_dae():
+        g = graph_from_data(request.get_json())
+        if not g.cubes:
+            raise ValueError("Add a cube or pipe before exporting COLLADA.")
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "project.dae"
+            g.to_dae_file(path, pipe_length=2.0)
+            contents = path.read_bytes()
+        name = secure_filename(g.name)[:120] or "project"
+        return Response(
+            contents,
+            mimetype="model/vnd.collada+xml",
+            headers={
+                "Content-Disposition": f'attachment; filename="{name}.dae"',
+                "Cache-Control": "no-store",
+            },
+        )
 
     @app.post("/api/import")
     def import_graph():

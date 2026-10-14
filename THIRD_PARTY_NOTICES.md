@@ -49,3 +49,9 @@ Crumble is supplied by Stim's interactive viewer. Downloaded COLLADA/correlation
 ## Names and affiliation
 
 Project names identify their respective upstream components. TQEC Studio is an independent project and does not claim endorsement by the Apache Software Foundation or any dependency's authors. Apache-2.0 does not grant trademark rights.
+
+## Optional Topologiq integration
+
+Topologiq is an optional, separately installed algorithmic lattice-surgery engine, licensed under Apache-2.0 by its upstream authors. Studio's adapter invokes its Python interfaces; it does not copy the algorithm into Studio. The setup script pins upstream commit `d010bd3e63686c93c12c922a84a944a3386ac785`. Its own LICENSE, NOTICE and dependency licences remain in its separate installation and must be retained when redistributing that environment. It is not included in the existing v0.1.0rc2 desktop archives. Upstream: https://github.com/tqec/topologiq.
+
+New Windows tester builds include a separate headless Topologiq executable alongside Studio. Its `third_party_licenses/` records the versions and original licence texts for the engine's scientific dependencies. Its upstream LICENSE, NOTICE and ETHICAL_NOTICE are included as well. This separate runtime preserves Studio's existing dependency versions.

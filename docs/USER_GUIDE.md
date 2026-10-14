@@ -55,7 +55,15 @@ Download PNG/SVG figures, raw Sinter CSV statistics and the simulation record. T
 
 ## Save, import and recover
 
-Save project creates a portable JSON file. The browser draft is convenient but is not a backup. Open project accepts Studio JSON, TQEC graph JSON, and self-contained DAE. DAE images, external references, entities, DTDs and compressed archives are rejected. Maximum request size is 4 MiB.
+Choose **JSON (.tqec.json)** or **COLLADA (.dae)** next to **Save project**. JSON creates a portable Studio project. COLLADA exports the blockgraph through TQEC, with the two-unit pipe drawing length and all faces intact, for use in Python:
+
+```python
+from tqec import BlockGraph
+
+graph = BlockGraph.from_dae_file("my-project.dae")
+```
+
+The browser draft is convenient but is not a backup. Open project accepts Studio JSON, TQEC graph JSON, and self-contained DAE. DAE images, external references, entities, DTDs and compressed archives are rejected. Maximum request size is 4 MiB.
 
 Source-checkout runs are in `instance/studio/`; installed-app runs use the platform application-data directory unless `--data-dir` is supplied. Each job has its own directory. Do not share an entire data directory unintentionally: run records contain your graph.
 
@@ -68,3 +76,31 @@ Whenever a second or later pipe joins a cube, Studio checks the junction against
 Deleting a pipe also rechecks both surviving endpoints. Any necessary cube replacements are included in the same Undo step. Empty open ports are removed; ordinary cubes remain in place. If the remaining walls admit no compatible cube, the edit is rejected without changing the graph.
 
 For an older graph, use **Correlation surfaces → Check cube kinds**, or **Review cube replacements** when validation offers it. Review the coordinates and old/new kinds, then choose **Apply cube replacements**. This uses TQEC’s hidden-face correction and validates the result without changing the pipes or positions. Find correlation surfaces again afterward: a changed cube kind can change the ZX vertex type and invalidate earlier surfaces. This correction addresses junction cube kinds; other geometry or compiler errors may still need a separate edit.
+
+## Generate a blockgraph with Topologiq (experimental)
+
+In **Design → Generate with Topologiq**, paste an OpenQASM 2 circuit, choose a traversal strategy and click **Generate blockgraph**. The provided example is a two-qubit CNOT. Successful generation replaces the current graph; Undo restores it. TQEC validates the result before Studio loads it. Generated inputs and outputs are open ports: choose compatible caps before compiling a closed computation.
+
+**Apply reduction before generation** is enabled by default in the interface. Choose **Topologiq · enhanced bialgebra** (the default) to run `full_reduce`, `to_rg`, `phase_free_simp`, Topologiq's `apply_bialgebra`, and identity simplification before creating the blockgraph. **PyZX · full reduction** keeps the original `full_reduce` method for comparison. Studio recalculates Pauli webs on the result. Uncheck reduction to generate from the original graph.
+
+The enhanced sequence comes from the pinned upstream Steane example. Studio does not copy its hard-coded vertex layout or silently apply its all-zero input preparations and selected-zero ancilla effects: those specify a particular computation rather than a generic simplification. Reduction does not guarantee fewer cubes and does not yet add support for measurement circuits. Source: https://github.com/tqec/topologiq/blob/d010bd3e63686c93c12c922a84a944a3386ac785/src/topologiq/assets/pyzx_graphs.py#L357
+
+The first integration supports H, X, Z, CNOT and CZ, without a fixed qubit-count limit. There is no generation time limit. Preview limits remain at 60 operations, 150 generated cubes and 200 ZX vertices. S, T, arbitrary rotations, measurements and custom QASM includes are rejected rather than approximated. Topologiq can support more patterns upstream, but these are not yet mapped into Studio's current TQEC engine. Generation runs in a separate process; concurrent local edits are not overwritten by a late result.
+
+For a source installation, run this once using Python 3.13 and with Git available:
+
+```bash
+python scripts/setup_topologiq.py
+```
+
+The setup installs the upstream package at commit `d010bd3e63686c93c12c922a84a944a3386ac785` in `.venv-topologiq`, without changing Studio's pinned dependencies. It downloads Topologiq's complete dependency environment, which is considerably larger than Studio's. Restart Studio afterwards. To use a different existing environment, set `TQEC_STUDIO_TOPOLOGIQ_PYTHON` to its Python executable before starting Studio. Desktop release v0.1.0rc2 does not include this new integration or its optional engine.
+
+Upstream project and examples: https://github.com/tqec/topologiq
+
+### Topologiq build settings
+
+The **compact preset** uses `debug=0`, `gravity=7`, `graph_traverse_mode="bfs-cycles"`, and `twins=False`, following the upstream recommendation for compact Steane-like layouts. Cross-edge traversal remains the initial selection because cycle traversal took substantially longer on the measurement-free, open-boundary Steane variant during testing. **Use compact preset** restores gravity, traversal and twins to those values. You can also choose standard BFS, cross-edge BFS or layer BFS, adjust gravity from 0 to 100, and enable twins to try improving completion of larger graphs. These are layout heuristics; they do not guarantee globally minimal volume. Debug stays at zero because step-by-step upstream visualizations require its separate desktop interface.
+
+Usage example: https://github.com/tqec/topologiq/blob/main/docs/examples/pyzx_panel.py
+
+New Windows tester packages bundle `TopologiqEngine/` beside `TQEC Studio.exe`. Keep this folder with the rest of the extracted package. Studio starts its isolated executable automatically; no Python installation or environment setup is required. The current preview's circuit-format and measurement limitations still apply.

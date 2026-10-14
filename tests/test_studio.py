@@ -5,11 +5,47 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from studio import create_studio_app
 
 
 class StudioTests(unittest.TestCase):
+    def test_topologiq_endpoint_returns_a_graph_and_requires_token(self):
+        from tqec import Basis
+        from tqec.gallery import cnot
+
+        graph = cnot(Basis.Z)
+        with patch("studio.topologiq_integration.generate_blockgraph", return_value=graph):
+            self.assertEqual(self.client.post("/api/topologiq", json={}).status_code, 403)
+            response = self.client.post("/api/topologiq", json={}, headers=self.headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json["graph"], json.loads(json.dumps(graph.to_dict())))
+
+    def test_dae_export_round_trip(self):
+        for example in ("cnot", "hadamard", "memory"):
+            with self.subTest(example=example):
+                original = self.client.get(f"/api/example/{example}").json["graph"]
+                response = self.client.post("/api/export/dae", json=original, headers=self.headers)
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.mimetype, "model/vnd.collada+xml")
+                self.assertIn(".dae", response.headers["Content-Disposition"])
+                imported = self.client.post(
+                    "/api/import",
+                    data={"file": (io.BytesIO(response.data), "project.dae")},
+                    headers=self.headers,
+                )
+                self.assertEqual(imported.status_code, 200, imported.text)
+                for field in ("cubes", "pipes"):
+                    self.assertCountEqual(imported.json["graph"][field], original[field])
+
+    def test_dae_export_rejects_empty_graph_and_missing_token(self):
+        graph = {"name": "Empty", "cubes": [], "pipes": []}
+        self.assertEqual(self.client.post("/api/export/dae", json=graph).status_code, 403)
+        response = self.client.post("/api/export/dae", json=graph, headers=self.headers)
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Add a cube or pipe", response.json["error"])
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.app = create_studio_app(self.temp.name)

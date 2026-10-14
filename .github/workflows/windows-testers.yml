@@ -27,12 +27,26 @@ jobs:
       - run: python -m unittest discover -s tests -v
       - run: python -m pip install pyinstaller==6.22.3
       - run: python -m PyInstaller --noconfirm --clean packaging/windows/studio.spec
+      - name: Build isolated Topologiq engine
+        shell: pwsh
+        run: |
+          python scripts/setup_topologiq.py
+          $enginePython = '.venv-topologiq/Scripts/python.exe'
+          & $enginePython -m pip install pyinstaller==6.22.3
+          & $enginePython -m PyInstaller --noconfirm --clean --workpath "$env:RUNNER_TEMP/topologiq-build" --distpath "$env:RUNNER_TEMP/topologiq-dist" packaging/windows/topologiq.spec
+          if ($LASTEXITCODE -ne 0) { throw 'Topologiq engine build failed' }
+          Copy-Item -Recurse "$env:RUNNER_TEMP/topologiq-dist/TopologiqEngine" 'dist/TQEC Studio/TopologiqEngine'
+          & $enginePython scripts/collect_licenses.py --output 'dist/TQEC Studio/TopologiqEngine/third_party_licenses' --packages topologiq pyzx numpy scipy matplotlib networkx imageio pillow contourpy cycler fonttools kiwisolver packaging pyparsing python-dateutil six typing_extensions lark pyperclip pyinstaller pyinstaller-hooks-contrib altgraph
+          if ($LASTEXITCODE -ne 0) { throw 'Topologiq licence collection failed' }
+          Copy-Item 'packaging/licenses/topologiq-0.1.0/LICENSE.txt' 'dist/TQEC Studio/TopologiqEngine/LICENSE.txt'
+          Copy-Item 'packaging/licenses/topologiq-0.1.0/NOTICE.txt' 'dist/TQEC Studio/TopologiqEngine/NOTICE.txt'
+          Copy-Item 'packaging/licenses/topologiq-0.1.0/ETHICAL_NOTICE.md' 'dist/TQEC Studio/TopologiqEngine/ETHICAL_NOTICE.md'
       - name: Test the frozen executable
         shell: pwsh
         run: |
           $report = Join-Path $env:RUNNER_TEMP 'frozen-smoke.json'
           $process = Start-Process -FilePath 'dist/TQEC Studio/TQEC Studio.exe' -ArgumentList @('--smoke-test', $report) -PassThru
-          if (-not $process.WaitForExit(240000)) {
+          if (-not $process.WaitForExit(360000)) {
             Stop-Process -Id $process.Id -Force
             throw 'Frozen application test timed out'
           }
