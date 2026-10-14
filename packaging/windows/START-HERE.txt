@@ -7,12 +7,17 @@ TQEC STUDIO - WINDOWS TESTER PREVIEW
 
 Keep the small TQEC Studio window open while working.
 Use Open Studio if you accidentally close the browser tab.
+When updating, stop the previous Studio instance first, extract into a new folder,
+and press Ctrl+F5 in the browser if it still shows the previous interface.
 Save project in the browser to keep a portable copy of your graph.
 When finished, save your project and click Stop Studio.
 
 Keep the entire extracted folder together, including _internal.
 Keep the TopologiqEngine folder too: it contains the isolated circuit-to-blockgraph engine.
 No separate Python or Topologiq installation is needed for this Windows package.
+Select a cube or pipe and press X, Y or Z to extend; hold Shift for negative directions.
+A selected cube is the starting point. A selected pipe extends from its farther endpoint
+along the chosen axis, with distance from the origin breaking ties when turning.
 In Design, open Generate with Topologiq to use it. Measurements are not supported yet.
 You cannot run the application directly inside the ZIP.
 

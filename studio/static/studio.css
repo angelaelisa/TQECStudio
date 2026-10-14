@@ -1049,3 +1049,10 @@ main.workspace-full:has(.canvas-section:not([hidden])) .canvas-section {
     width: 100%;
   }
 }
+
+.cube-extension-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.cube-extension-controls button { margin: 0; }

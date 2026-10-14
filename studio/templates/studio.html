@@ -105,7 +105,7 @@ cx q[0],q[1];</textarea>
 <button id="undo">↶ Undo</button> <button id="redo">↷ Redo</button>
 <details>
 <summary>Keyboard shortcuts</summary>
-<p class="hint">Select a pipe, then press X, Y or Z to extend in a positive direction; Shift + X, Y or Z for a negative direction. Valid ends and colours are offered when a choice is needed. The H checkbox applies to new pipes.</p>
+<p class="hint">Select a cube or open port, then press X, Y or Z to extend from it in a positive direction; Shift + X, Y or Z for a negative direction. If a pipe is selected instead, Studio extends from its end farthest from the origin along the chosen axis (ties use overall distance). Studio uses a compatible pipe colour; the H checkbox applies to new pipes.</p>
 <p class="hint">Ctrl/Cmd + Z: undo · Ctrl/Cmd + Y or Shift + Ctrl/Cmd + Z: redo · Delete/Backspace: delete selected pipe or cube (with its connected pipes) · Escape: clear selection · F: fit view. Shortcuts pause while typing.</p>
 </details>
 <p id="autosave" class="hint">Drafts are saved in this browser.</p>
@@ -158,6 +158,16 @@ cx q[0],q[1];</textarea>
 </select>
 <div id="selection" class="muted">Select a cube in the canvas.</div>
 <div id="edit-controls" hidden>
+<h3>Extend from this cube</h3>
+<div class="cube-extension-controls" aria-label="Extend from selected cube along graph axes">
+<button data-extend-axis="0" data-extend-sign="-1" title="Shift + X">−X</button>
+<button data-extend-axis="0" data-extend-sign="1" title="X">+X</button>
+<button data-extend-axis="1" data-extend-sign="-1" title="Shift + Y">−Y</button>
+<button data-extend-axis="1" data-extend-sign="1" title="Y">+Y</button>
+<button data-extend-axis="2" data-extend-sign="-1" title="Shift + Z">−Z</button>
+<button data-extend-axis="2" data-extend-sign="1" title="Z">+Z</button>
+</div>
+<p class="hint">Directions follow the graph axes. The new endpoint becomes selected. H applies to new pipes.</p>
 <button id="delete" class="danger">Delete cube and its pipes</button>
 </div>
 <div class="divider">
@@ -350,12 +360,6 @@ cx q[0],q[1];</textarea>
 <button id="cancel-cube-repair">Cancel</button>
 <button id="apply-cube-repair" class="primary">Apply cube replacements</button>
 </div>
-</dialog>
-<dialog id="direction-dialog" aria-labelledby="direction-title">
-<h2 id="direction-title">Choose a pipe</h2>
-<p>Choose a valid pipe colour and starting endpoint. Coordinates use the graph’s X, Y and Z axes.</p>
-<div id="direction-options" class="dialog-actions"></div>
-<button id="cancel-direction">Cancel</button>
 </dialog>
 <dialog id="junction-dialog">
 <h2>Choose the junction boundary</h2>

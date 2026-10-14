@@ -404,7 +404,7 @@ function selectPipe(pipe) {
   panel('design');
   render();
   scrollToSelectedPipe();
-  message('Pipe selected. Press X, Y or Z to extend; hold Shift for the negative direction.');
+  message('Pipe selected. X, Y or Z extends from its endpoint farthest from the origin along that axis; hold Shift for the negative direction.');
 }
 async function deletePipe(id, choices = {}) {
   if (busy || !id) return;
@@ -470,6 +470,7 @@ function select(p) {
   $('build-mode').value = 'cube';
   $('build-mode').onchange();
   render();
+  message('Cube selected. Press X, Y or Z to extend from here; hold Shift for the negative direction.');
 }
 
 function drawAxes(svg, projectDirection) {
@@ -1166,7 +1167,7 @@ function showJunctionChoices(ambiguities, pending) {
   $('junction-dialog').showModal();
   message('Pipe colours allow several cubes. Choose the junction boundary to finish.');
 }
-async function placePipe(option, selectedKind, choices = {}) {
+async function placePipe(option, selectedKind, choices = {}, focus = null) {
   if (busy) return;
   busy = true;
   try {
@@ -1179,14 +1180,14 @@ async function placePipe(option, selectedKind, choices = {}) {
     };
     const result = await api('/api/place-pipe', payload);
     if (result.ambiguities) {
-      showJunctionChoices(result.ambiguities, {action: 'place', option, kind: selectedKind, generation, choices});
+      showJunctionChoices(result.ambiguities, {action: 'place', option, kind: selectedKind, generation, choices, focus});
       return;
     }
     pendingPipe = null;
-    selectedPipe = pipeKey(option);
-    selected = null;
+    selectedPipe = focus ? null : pipeKey(option);
+    selected = focus ? key(focus) : null;
     commit(result.graph);
-    scrollToSelectedPipe();
+    if (selectedPipe) scrollToSelectedPipe();
     message(result.inferred.length ? 'Pipe placed. Junctions checked: ' + result.inferred.map(c => (['P', 'PORT'].includes(c.previous) ? c.kind : c.previous + ' → ' + c.kind) + ' at (' + c.position + ')').join('; ') + '. Undo restores the pipe and cubes together.' : 'Pipe placed. Junction cubes checked. Dangling ends remain open ports.');
   } catch (e) {
     message(e.message, true, e.repairable);
@@ -1238,7 +1239,7 @@ $('confirm-junction').onclick = () => {
   }
   if (pending.action === 'delete-cube') deleteCube(pending.coord, choices);
   else if (pending.action === 'delete') deletePipe(pending.id, choices);
-  else placePipe(pending.option, pending.kind, choices);
+  else placePipe(pending.option, pending.kind, choices, pending.focus);
 };
 
 function panel(name) {
@@ -1882,64 +1883,58 @@ start();
 
 // Keyboard edits share the same validated placement and history paths as dragging.
 let keyboardPlacementBusy = false;
+function extensionEndpoint(pipe, axis, sign) {
+  // For a turn, both ends may have the same coordinate on the requested axis.
+  // Break that tie by distance from the origin, then direction and coordinates.
+  const distanceSquared = p => p.reduce((sum, n) => sum + n * n, 0);
+  return [pipe.u, pipe.v].sort((a, b) =>
+    Math.abs(b[axis]) - Math.abs(a[axis]) ||
+    distanceSquared(b) - distanceSquared(a) ||
+    sign * (b[axis] - a[axis]) ||
+    b[0] - a[0] || b[1] - a[1] || b[2] - a[2]
+  )[0];
+}
 async function extendByKeyboard(axis, sign) {
+  if (busy || keyboardPlacementBusy || drag || document.querySelector('dialog[open]')) return;
+  const cube = graph.cubes.find(c => key(c.position) === selected);
   const pipe = graph.pipes.find(p => pipeKey(p) === selectedPipe);
-  if (!pipe) {
-    message('Select a pipe in the drawing first.', true);
+  if (!cube && !pipe) {
+    message('Select a cube, open port or pipe in the drawing first.', true);
     return;
   }
-  const version = generation, edge = selectedPipe;
+  const version = generation, anchor = selected, activePipe = selectedPipe;
+  const source = cube ? [...cube.position] : [...extensionEndpoint(pipe, axis, sign)];
+  const destination = [...source];
+  destination[axis] += sign;
+  const edge = pipeKey({u: source, v: destination});
   const suffix = $('hadamard').checked ? 'H' : '';
   const kinds = ['OXZ', 'OZX', 'XOZ', 'ZOX', 'XZO', 'ZXO'].filter(k => k[axis] === 'O');
+  // Prefer the palette colour if it fits; otherwise use the first valid colour.
+  kinds.sort((a, b) => Number(b === kind) - Number(a === kind));
   keyboardPlacementBusy = true;
   try {
     const results = await Promise.all(kinds.map(async k => ({
       kind: k + suffix,
       placements: (await api('/api/pipe-placements', {graph: clone(graph), kind: k + suffix})).placements
     })));
-    if (generation !== version || selectedPipe !== edge) return;
-    const choices = [];
-    for (const source of [pipe.u, pipe.v]) {
-      const destination = [...source];
-      destination[axis] += sign;
-      const id = pipeKey({u: source, v: destination});
-      for (const result of results) {
-        const option = result.placements.find(p => pipeKey(p) === id);
-        if (option) choices.push({option, kind: result.kind, source, destination});
+    if (generation !== version || selected !== anchor || selectedPipe !== activePipe) return;
+    for (const result of results) {
+      const option = result.placements.find(p => pipeKey(p) === edge);
+      if (option) {
+        await placePipe(option, result.kind, {}, cube ? destination : null);
+        return;
       }
     }
-    if (!choices.length) {
-      message('No valid pipe in that direction from either end. Try another direction, change H, or reopen a capped endpoint.', true);
-      return;
-    }
-    if (choices.length === 1) {
-      await placePipe(choices[0].option, choices[0].kind);
-      return;
-    }
-    $('direction-title').textContent = `Extend in ${sign > 0 ? '+' : '−'}${'XYZ'[axis]}`;
-    const list = $('direction-options');
-    list.replaceChildren();
-    for (const choice of choices) {
-      const button = document.createElement('button');
-      button.textContent = `${choice.kind} · (${choice.source.join(', ')}) → (${choice.destination.join(', ')})`;
-      button.onclick = async () => {
-        $('direction-dialog').close();
-        if (generation !== version || selectedPipe !== edge) {
-          message('Selection changed. Choose the direction again.', true);
-          return;
-        }
-        await placePipe(choice.option, choice.kind);
-      };
-      list.append(button);
-    }
-    $('direction-dialog').showModal();
+    message(`No valid pipe in that direction from ${cube ? 'the selected cube' : 'the chosen endpoint (' + source.join(', ') + ')'}. Try another direction or change H.`, true);
   } catch (error) {
     message(error.message, true);
   } finally {
     keyboardPlacementBusy = false;
   }
 }
-$('cancel-direction').onclick = () => $('direction-dialog').close();
+for (const button of document.querySelectorAll('[data-extend-axis]')) {
+  button.onclick = () => extendByKeyboard(Number(button.dataset.extendAxis), Number(button.dataset.extendSign));
+}
 document.addEventListener('keydown', event => {
   if (event.defaultPrevented || event.isComposing || event.repeat || event.altKey) return;
   const target = event.target;
