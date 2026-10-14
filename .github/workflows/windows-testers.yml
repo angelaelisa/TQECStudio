@@ -31,6 +31,7 @@ jobs:
         shell: pwsh
         run: |
           python scripts/setup_topologiq.py
+          if ($LASTEXITCODE -ne 0) { throw 'Topologiq environment setup failed' }
           $enginePython = '.venv-topologiq/Scripts/python.exe'
           & $enginePython -m pip install pyinstaller==6.22.3
           & $enginePython -m PyInstaller --noconfirm --clean --workpath "$env:RUNNER_TEMP/topologiq-build" --distpath "$env:RUNNER_TEMP/topologiq-dist" packaging/windows/topologiq.spec
